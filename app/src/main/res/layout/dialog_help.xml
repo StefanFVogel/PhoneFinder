@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- App Info -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_app_title"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_app_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Status Dashboard -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_status_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_status_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Tracking -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_tracking_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_tracking_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Google Drive -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_drive_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_drive_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Telegram Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_telegram_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_telegram_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/link_botfather"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_telegram_botfather_link"
+            android:textColor="@android:color/holo_blue_dark"
+            android:textStyle="bold"
+            android:padding="4dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/link_userinfobot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_telegram_userinfobot_link"
+            android:textColor="@android:color/holo_blue_dark"
+            android:textStyle="bold"
+            android:padding="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Battery Optimization -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_battery_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_battery_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Last Breath -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_lastbreath_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_lastbreath_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Version -->
+        <TextView
+            android:id="@+id/text_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Version 1.0"
+            android:textColor="?android:textColorTertiary"
+            android:textSize="12sp"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>

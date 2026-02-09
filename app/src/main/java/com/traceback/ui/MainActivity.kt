@@ -234,6 +234,11 @@ class MainActivity : AppCompatActivity() {
         binding.buttonTestLastBreath.setOnClickListener {
             testLastBreath()
         }
+        
+        // Help button
+        binding.buttonHelp.setOnClickListener {
+            showHelpDialog()
+        }
     }
     
     private fun checkPermissions() {
@@ -336,6 +341,14 @@ class MainActivity : AppCompatActivity() {
         editBotToken.setText(prefs.telegramBotToken ?: "")
         editChatId.setText(prefs.telegramChatId ?: "")
         
+        // Clickable links
+        dialogView.findViewById<android.widget.TextView>(R.id.link_botfather).setOnClickListener {
+            openUrl("https://t.me/BotFather")
+        }
+        dialogView.findViewById<android.widget.TextView>(R.id.link_userinfobot).setOnClickListener {
+            openUrl("https://t.me/userinfobot")
+        }
+        
         AlertDialog.Builder(this)
             .setTitle("Telegram Bot Konfiguration")
             .setView(dialogView)
@@ -351,6 +364,38 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Abbrechen", null)
             .show()
+    }
+    
+    private fun showHelpDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_help, null)
+        
+        // Set version
+        val versionText = dialogView.findViewById<android.widget.TextView>(R.id.text_version)
+        try {
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            versionText.text = "Version ${pInfo.versionName} (${pInfo.longVersionCode})"
+        } catch (e: Exception) {
+            versionText.text = "Version 1.0"
+        }
+        
+        // Clickable links
+        dialogView.findViewById<android.widget.TextView>(R.id.link_botfather).setOnClickListener {
+            openUrl("https://t.me/BotFather")
+        }
+        dialogView.findViewById<android.widget.TextView>(R.id.link_userinfobot).setOnClickListener {
+            openUrl("https://t.me/userinfobot")
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("ℹ️ Hilfe")
+            .setView(dialogView)
+            .setPositiveButton("Schließen", null)
+            .show()
+    }
+    
+    private fun openUrl(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        startActivity(intent)
     }
     
     private fun requestBatteryExemption() {

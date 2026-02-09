@@ -32,12 +32,35 @@
             android:singleLine="true" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider"
+        android:layout_marginVertical="12dp" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Hilfe:\n• Bot erstellen: @BotFather\n• Chat-ID finden: @userinfobot"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="12sp" />
+        android:text="So findest du die Werte:"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/link_botfather"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1️⃣ Bot Token → @BotFather"
+        android:textColor="@android:color/holo_blue_dark"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackground" />
+
+    <TextView
+        android:id="@+id/link_userinfobot"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2️⃣ Chat ID → @userinfobot"
+        android:textColor="@android:color/holo_blue_dark"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackground" />
 
 </LinearLayout>
