@@ -161,8 +161,9 @@ class TrackingService : Service() {
                 Log.d(TAG, "Logged moving point: ${location.latitude}, ${location.longitude}")
             }
         } else {
-            // First location
-            kmlGenerator.addPoint(location)
+            // First location - always log initial position
+            kmlGenerator.addPoint(location, isStopPoint = true)
+            Log.i(TAG, "Logged initial position: ${location.latitude}, ${location.longitude}")
         }
         
         lastLocation = location

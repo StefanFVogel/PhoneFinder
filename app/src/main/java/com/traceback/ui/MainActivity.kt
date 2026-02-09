@@ -3,6 +3,7 @@ package com.traceback.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -306,12 +307,28 @@ class MainActivity : AppCompatActivity() {
         
         lifecycleScope.launch {
             try {
-                // Load today's points and generate KML
-                val points = kmlGenerator.loadTodayPoints()
+                // Load today's points
+                var points = kmlGenerator.loadTodayPoints()
+                
+                // If no points, get current location first
+                if (points.isEmpty()) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Hole aktuellen Standort...", Toast.LENGTH_SHORT).show()
+                    }
+                    
+                    // Request current location
+                    getCurrentLocationAndLog()
+                    
+                    // Wait a moment for location
+                    kotlinx.coroutines.delay(3000)
+                    
+                    // Reload points
+                    points = kmlGenerator.loadTodayPoints()
+                }
                 
                 if (points.isEmpty()) {
                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, "Keine Daten zum Synchronisieren", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Keine Standortdaten verfügbar. Ist GPS aktiv?", Toast.LENGTH_LONG).show()
                     }
                     return@launch
                 }
@@ -332,6 +349,23 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     Toast.makeText(this@MainActivity, "Fehler: ${e.message}", Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+    
+    private fun getCurrentLocationAndLog() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+        
+        val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
+        fusedLocationClient.getCurrentLocation(
+            com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, 
+            null
+        ).addOnSuccessListener { location ->
+            location?.let {
+                kmlGenerator.addPoint(it, isStopPoint = true)
             }
         }
     }
