@@ -50,3 +50,4 @@ com.traceback/
 
 Bot-Token und Chat-ID werden verschlüsselt in EncryptedSharedPreferences gespeichert.
 Niemals im Klartext in Logs oder KML-Files!
+# Trigger rebuild with secrets
