@@ -17,26 +17,29 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Manages KML file storage in Google Drive appDataFolder.
- * Data is only accessible by this app, not visible in user's Drive.
+ * Manages KML file storage in Google Drive.
+ * Files are stored in a visible "TraceBack" folder in user's Drive.
  */
 class DriveManager(private val context: Context) {
     
     companion object {
         private const val TAG = "DriveManager"
         private const val APP_NAME = "TraceBack"
+        private const val FOLDER_NAME = "TraceBack"
         private const val MIME_KML = "application/vnd.google-earth.kml+xml"
+        private const val MIME_FOLDER = "application/vnd.google-apps.folder"
         private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     }
     
     private var driveService: Drive? = null
+    private var folderId: String? = null
     
     /**
      * Initialize Drive service with signed-in Google account.
      */
     fun initialize(account: GoogleSignInAccount) {
         val credential = GoogleAccountCredential.usingOAuth2(
-            context, listOf(DriveScopes.DRIVE_APPDATA)
+            context, listOf(DriveScopes.DRIVE_FILE)
         ).apply {
             selectedAccount = account.account
         }
@@ -68,11 +71,56 @@ class DriveManager(private val context: Context) {
     }
     
     /**
-     * Upload KML content to appDataFolder.
+     * Get or create the TraceBack folder in Drive root.
+     */
+    private suspend fun getOrCreateFolder(): String? = withContext(Dispatchers.IO) {
+        val service = driveService ?: return@withContext null
+        
+        // Return cached folder ID
+        folderId?.let { return@withContext it }
+        
+        try {
+            // Search for existing folder
+            val result = service.files().list()
+                .setQ("name = '$FOLDER_NAME' and mimeType = '$MIME_FOLDER' and trashed = false")
+                .setSpaces("drive")
+                .setFields("files(id)")
+                .execute()
+            
+            if (result.files.isNotEmpty()) {
+                folderId = result.files[0].id
+                Log.i(TAG, "Found existing folder: $folderId")
+                return@withContext folderId
+            }
+            
+            // Create new folder
+            val folderMetadata = DriveFile().apply {
+                name = FOLDER_NAME
+                mimeType = MIME_FOLDER
+            }
+            val folder = service.files().create(folderMetadata)
+                .setFields("id")
+                .execute()
+            folderId = folder.id
+            Log.i(TAG, "Created folder: $folderId")
+            return@withContext folderId
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get/create folder", e)
+            return@withContext null
+        }
+    }
+    
+    /**
+     * Upload KML content to TraceBack folder (visible in Drive).
      */
     suspend fun uploadKml(kmlContent: String): Boolean = withContext(Dispatchers.IO) {
         val service = driveService ?: run {
             Log.e(TAG, "Drive service not initialized")
+            return@withContext false
+        }
+        
+        val parentFolder = getOrCreateFolder() ?: run {
+            Log.e(TAG, "Failed to get folder")
             return@withContext false
         }
         
@@ -81,7 +129,7 @@ class DriveManager(private val context: Context) {
             val fileName = "track_$today.kml"
             
             // Check if file already exists
-            val existingFile = findFile(fileName)
+            val existingFile = findFile(fileName, parentFolder)
             
             val content = ByteArrayContent.fromString(MIME_KML, kmlContent)
             
@@ -93,7 +141,7 @@ class DriveManager(private val context: Context) {
                 // Create new file
                 val metadata = DriveFile().apply {
                     name = fileName
-                    parents = listOf("appDataFolder")
+                    parents = listOf(parentFolder)
                 }
                 service.files().create(metadata, content)
                     .setFields("id")
@@ -109,14 +157,14 @@ class DriveManager(private val context: Context) {
     }
     
     /**
-     * Find a file by name in appDataFolder.
+     * Find a file by name in TraceBack folder.
      */
-    private fun findFile(fileName: String): DriveFile? {
+    private fun findFile(fileName: String, parentFolder: String): DriveFile? {
         val service = driveService ?: return null
         
         val result = service.files().list()
-            .setSpaces("appDataFolder")
-            .setQ("name = '$fileName'")
+            .setSpaces("drive")
+            .setQ("name = '$fileName' and '$parentFolder' in parents and trashed = false")
             .setFields("files(id, name)")
             .execute()
         
@@ -124,14 +172,17 @@ class DriveManager(private val context: Context) {
     }
     
     /**
-     * List all KML files in appDataFolder.
+     * List all KML files in TraceBack folder.
      */
     suspend fun listFiles(): List<DriveFile> = withContext(Dispatchers.IO) {
         val service = driveService ?: return@withContext emptyList()
         
+        val parentFolder = getOrCreateFolder() ?: return@withContext emptyList()
+        
         try {
             val result = service.files().list()
-                .setSpaces("appDataFolder")
+                .setSpaces("drive")
+                .setQ("'$parentFolder' in parents and trashed = false")
                 .setFields("files(id, name, createdTime, size)")
                 .setOrderBy("createdTime desc")
                 .execute()
