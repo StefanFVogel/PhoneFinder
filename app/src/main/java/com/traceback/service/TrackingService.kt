@@ -32,7 +32,7 @@ class TrackingService : Service() {
     companion object {
         private const val TAG = "TrackingService"
         private const val NOTIFICATION_ID = 1
-        private const val SYNC_INTERVAL_MS = TimeUnit.HOURS.toMillis(1)
+        private const val SYNC_INTERVAL_MS = 3600000L  // 1 hour in milliseconds
         private const val LAST_BREATH_BATTERY_THRESHOLD = 2
         
         fun start(context: Context) {
