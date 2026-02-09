@@ -230,15 +230,25 @@ class MainActivity : AppCompatActivity() {
         val prefs = TraceBackApp.instance.securePrefs
         
         val dialogView = layoutInflater.inflate(R.layout.dialog_telegram_setup, null)
-        // Note: Would need to implement dialog layout with EditTexts for token/chatId
+        val editBotToken = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.edit_bot_token)
+        val editChatId = dialogView.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.edit_chat_id)
+        
+        // Pre-fill with existing values
+        editBotToken.setText(prefs.telegramBotToken ?: "")
+        editChatId.setText(prefs.telegramChatId ?: "")
         
         AlertDialog.Builder(this)
             .setTitle("Telegram Bot Konfiguration")
-            .setMessage("Bot-Token und Chat-ID eingeben.\n\nBot erstellen: @BotFather\nChat-ID: @userinfobot")
             .setView(dialogView)
             .setPositiveButton("Speichern") { _, _ ->
-                // Save values from dialog
+                val botToken = editBotToken.text?.toString()?.trim()
+                val chatId = editChatId.text?.toString()?.trim()
+                
+                prefs.telegramBotToken = if (botToken.isNullOrBlank()) null else botToken
+                prefs.telegramChatId = if (chatId.isNullOrBlank()) null else chatId
+                
                 updateStatusIndicators()
+                Toast.makeText(this, "Telegram-Konfiguration gespeichert", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Abbrechen", null)
             .show()
