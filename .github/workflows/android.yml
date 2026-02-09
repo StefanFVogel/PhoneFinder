@@ -66,7 +66,29 @@ jobs:
         retention-days: 30
 
     - name: Build Release APK (unsigned)
-      run: ./gradlew assembleRelease
+      id: release-build
+      continue-on-error: true
+      run: ./gradlew assembleRelease --stacktrace 2>&1 | tee release-build.log
+      
+    - name: Upload release build log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-build-log
+        path: release-build.log
+        
+    - name: Show release build errors
+      if: always()
+      run: |
+        echo "=== LAST 100 LINES OF RELEASE BUILD LOG ==="
+        tail -100 release-build.log
+        echo ""
+        echo "=== SEARCHING FOR ERRORS ==="
+        grep -i "error\|failure\|exception" release-build.log | head -50 || echo "No obvious errors found"
+        
+    - name: Fail if release build failed
+      if: steps.release-build.outcome == 'failure'
+      run: exit 1
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
