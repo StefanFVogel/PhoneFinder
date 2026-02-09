@@ -27,6 +27,10 @@
     <!-- Bluetooth for anchor detection -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    
+    <!-- Activity Recognition -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <application
         android:name=".TraceBackApp"
@@ -58,14 +62,21 @@
 
         <!-- Boot Receiver -->
         <receiver
-            android:name=".service.BootReceiver"
+            android:name=".receiver.BootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+        
+        <!-- Activity Recognition Receiver -->
+        <receiver
+            android:name=".activity.ActivityRecognitionManager$ActivityTransitionReceiver"
+            android:enabled="true"
+            android:exported="false" />
         
         <!-- Shutdown Receiver (Last Breath) -->
         <receiver

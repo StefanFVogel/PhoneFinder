@@ -23,16 +23,16 @@ import com.traceback.TraceBackApp
 import com.traceback.drive.DriveManager
 import com.traceback.kml.KmlGenerator
 import com.traceback.telegram.TelegramNotifier
+import com.traceback.tracking.SmartTrackingManager
 import com.traceback.ui.MainActivity
+import com.traceback.worker.SyncWorker
 import kotlinx.coroutines.*
-import java.util.concurrent.TimeUnit
 
 class TrackingService : Service() {
     
     companion object {
         private const val TAG = "TrackingService"
         private const val NOTIFICATION_ID = 1
-        private const val SYNC_INTERVAL_MS = 3600000L  // 1 hour in milliseconds
         private const val LAST_BREATH_BATTERY_THRESHOLD = 2
         
         fun start(context: Context) {
@@ -50,12 +50,14 @@ class TrackingService : Service() {
     private lateinit var kmlGenerator: KmlGenerator
     private lateinit var driveManager: DriveManager
     private lateinit var telegramNotifier: TelegramNotifier
+    private lateinit var smartTrackingManager: SmartTrackingManager
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     private var lastLocation: Location? = null
     private var isMoving = false
     private var lastSyncTime = 0L
+    private var lastStationaryLogTime = 0L
     
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -77,9 +79,13 @@ class TrackingService : Service() {
         kmlGenerator = KmlGenerator(this)
         driveManager = DriveManager(this)
         telegramNotifier = TelegramNotifier(TraceBackApp.instance.securePrefs)
+        smartTrackingManager = SmartTrackingManager(this)
         
         setupLocationCallback()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        
+        // Start activity recognition
+        smartTrackingManager.activityManager.startMonitoring()
         
         Log.i(TAG, "TrackingService created")
     }
@@ -87,7 +93,9 @@ class TrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, createNotification())
         startLocationUpdates()
-        scheduleSyncJob()
+        
+        // Schedule periodic sync via WorkManager
+        SyncWorker.schedule(this)
         
         Log.i(TAG, "TrackingService started")
         return START_STICKY
@@ -98,6 +106,10 @@ class TrackingService : Service() {
         serviceScope.cancel()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         unregisterReceiver(batteryReceiver)
+        smartTrackingManager.activityManager.stopMonitoring()
+        
+        // Cancel periodic sync when tracking is stopped
+        SyncWorker.cancel(this)
         
         Log.i(TAG, "TrackingService destroyed")
     }
@@ -136,38 +148,94 @@ class TrackingService : Service() {
     private fun processLocation(location: Location) {
         val prefs = TraceBackApp.instance.securePrefs
         
-        // Check if connected to stationary anchor
-        if (isConnectedToStationaryAnchor()) {
-            if (isMoving) {
-                // Transition to stationary: log final high-precision fix
-                logStopPoint(location)
-                isMoving = false
-            }
-            // In stationary mode: only log once per day
+        // Master switch check
+        if (!prefs.trackingEnabled) {
+            Log.d(TAG, "Tracking disabled, ignoring location")
             return
         }
         
-        // Moving mode
-        val lastLoc = lastLocation
-        if (lastLoc != null) {
-            val distance = location.distanceTo(lastLoc)
-            val timeDelta = location.time - lastLoc.time
-            val speed = if (timeDelta > 0) distance / (timeDelta / 1000f) else 0f
+        // Evaluate smart tracking mode
+        serviceScope.launch {
+            val mode = smartTrackingManager.evaluateTrackingMode()
             
-            // Only log if actually moving (> 1 m/s = 3.6 km/h)
-            if (speed > 1f || distance > prefs.trackingDistanceMeters) {
-                isMoving = true
-                kmlGenerator.addPoint(location)
-                Log.d(TAG, "Logged moving point: ${location.latitude}, ${location.longitude}")
+            when (mode) {
+                SmartTrackingManager.TrackingMode.OFF -> {
+                    Log.d(TAG, "Smart tracking OFF, ignoring location")
+                    return@launch
+                }
+                
+                SmartTrackingManager.TrackingMode.STATIONARY -> {
+                    // Only log once per day in stationary mode
+                    val oneDayMs = 24 * 60 * 60 * 1000L
+                    if (System.currentTimeMillis() - lastStationaryLogTime > oneDayMs) {
+                        kmlGenerator.addPoint(location, isStopPoint = true)
+                        lastStationaryLogTime = System.currentTimeMillis()
+                        Log.i(TAG, "Logged daily stationary point")
+                    }
+                    
+                    // Check for drift
+                    val drift = smartTrackingManager.checkDrift(location)
+                    if (drift != null && drift > 500) {
+                        sendDriftAlert(drift, location)
+                    }
+                    return@launch
+                }
+                
+                SmartTrackingManager.TrackingMode.LEARNING -> {
+                    // Set learning start location and update learning
+                    smartTrackingManager.setLearningStartLocation(location)
+                    smartTrackingManager.updateLearning(location)
+                    // Still track during learning
+                }
+                
+                SmartTrackingManager.TrackingMode.ACTIVE -> {
+                    // Normal active tracking
+                }
             }
-        } else {
-            // First location - always log initial position
-            kmlGenerator.addPoint(location, isStopPoint = true)
-            Log.i(TAG, "Logged initial position: ${location.latitude}, ${location.longitude}")
+            
+            // Active tracking logic
+            val lastLoc = lastLocation
+            if (lastLoc != null) {
+                val distance = location.distanceTo(lastLoc)
+                val timeDelta = location.time - lastLoc.time
+                val speed = if (timeDelta > 0) distance / (timeDelta / 1000f) else 0f
+                
+                // Check if transitioning from moving to still
+                if (isMoving && !smartTrackingManager.activityManager.isMoving()) {
+                    // Log stop point
+                    logStopPoint(location)
+                    isMoving = false
+                }
+                
+                // Log if actually moving
+                if (speed > 1f || distance > prefs.trackingDistanceMeters) {
+                    isMoving = true
+                    kmlGenerator.addPoint(location)
+                    Log.d(TAG, "Logged moving point: ${location.latitude}, ${location.longitude}")
+                }
+            } else {
+                // First location - always log initial position
+                kmlGenerator.addPoint(location, isStopPoint = true)
+                Log.i(TAG, "Logged initial position: ${location.latitude}, ${location.longitude}")
+            }
+            
+            lastLocation = location
+        }
+    }
+    
+    private suspend fun sendDriftAlert(drift: Float, location: Location) {
+        val message = buildString {
+            appendLine("⚠️ TraceBack Drift-Warnung")
+            appendLine()
+            appendLine("Das Gerät hat sich ${drift.toInt()}m von der erwarteten Position bewegt,")
+            appendLine("obwohl es mit einem stationären Netzwerk verbunden ist.")
+            appendLine()
+            appendLine("📍 Aktuelle Position:")
+            appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
         }
         
-        lastLocation = location
-        checkDriftDetection(location)
+        telegramNotifier.sendEmergency(message)
+        Log.w(TAG, "Drift alert sent: ${drift}m")
     }
     
     private fun logStopPoint(location: Location) {
@@ -181,48 +249,6 @@ class TrackingService : Service() {
                     kmlGenerator.addPoint(loc, isStopPoint = true)
                     Log.i(TAG, "Logged stop point: ${loc.latitude}, ${loc.longitude}")
                 }
-        }
-    }
-    
-    private fun isConnectedToStationaryAnchor(): Boolean {
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val connectionInfo = wifiManager.connectionInfo
-        val currentSSID = connectionInfo.ssid?.replace("\"", "") ?: return false
-        
-        val anchors = TraceBackApp.instance.securePrefs.stationaryAnchors
-        return anchors.contains(currentSSID)
-    }
-    
-    private fun checkDriftDetection(location: Location) {
-        // If stationary anchor is set but location drifted > 500m, warn user
-        if (isConnectedToStationaryAnchor()) {
-            val lastLoc = lastLocation ?: return
-            val drift = location.distanceTo(lastLoc)
-            
-            if (drift > 500) {
-                Log.w(TAG, "Drift detected: ${drift}m while connected to stationary anchor")
-                // TODO: Send notification to user
-            }
-        }
-    }
-    
-    private fun scheduleSyncJob() {
-        serviceScope.launch {
-            while (isActive) {
-                delay(SYNC_INTERVAL_MS)
-                performSync()
-            }
-        }
-    }
-    
-    private suspend fun performSync() {
-        try {
-            val kmlContent = kmlGenerator.generateDailyKml()
-            driveManager.uploadKml(kmlContent)
-            TraceBackApp.instance.securePrefs.lastSyncTimestamp = System.currentTimeMillis()
-            Log.i(TAG, "Sync completed successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Sync failed", e)
         }
     }
     
