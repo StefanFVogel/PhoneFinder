@@ -27,81 +27,30 @@ jobs:
       run: yes | sdkmanager --licenses || true
 
     - name: Install SDK components
-      run: |
-        sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
     - name: Build Debug APK
-      id: build
-      continue-on-error: true
-      run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
-      
-    - name: Upload build log
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-log
-        path: build.log
-        
-    - name: Show build errors
-      if: always()
-      run: |
-        echo "=== LAST 100 LINES OF BUILD LOG ==="
-        tail -100 build.log
-        echo ""
-        echo "=== SEARCHING FOR ERRORS ==="
-        grep -i "error\|failure\|exception" build.log | head -50 || echo "No obvious errors found"
-        
-    - name: Fail if build failed
-      if: steps.build.outcome == 'failure'
-      run: exit 1
+      run: ./gradlew assembleDebug --stacktrace
 
-    - name: List APK files
-      run: |
-        echo "=== Debug APKs ==="
-        find app/build/outputs/apk/debug -name "*.apk" 2>/dev/null || echo "No debug APKs found"
-        echo "=== Release APKs ==="
-        find app/build/outputs/apk/release -name "*.apk" 2>/dev/null || echo "No release APKs found"
+    - name: List Debug APK files
+      run: find app/build/outputs/apk -name "*.apk" -ls
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/*.apk
-        if-no-files-found: error
         retention-days: 30
 
-    - name: Build Release APK (unsigned)
-      id: release-build
-      continue-on-error: true
-      run: ./gradlew assembleRelease --stacktrace 2>&1 | tee release-build.log
-      
-    - name: Upload release build log
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-build-log
-        path: release-build.log
-        
-    - name: Show release build errors
-      if: always()
-      run: |
-        echo "=== LAST 100 LINES OF RELEASE BUILD LOG ==="
-        tail -100 release-build.log
-        echo ""
-        echo "=== SEARCHING FOR ERRORS ==="
-        grep -i "error\|failure\|exception" release-build.log | head -50 || echo "No obvious errors found"
-        
-    - name: Fail if release build failed
-      if: steps.release-build.outcome == 'failure'
-      run: exit 1
+    - name: Build Release APK
+      run: ./gradlew assembleRelease --stacktrace
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-unsigned
+        name: app-release
         path: app/build/outputs/apk/release/*.apk
-        if-no-files-found: error
         retention-days: 30
