@@ -23,6 +23,7 @@ import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.databinding.ActivityMainBinding
 import com.traceback.drive.DriveManager
+import com.traceback.kml.KmlGenerator
 import com.traceback.service.TrackingService
 import com.traceback.telegram.TelegramNotifier
 import kotlinx.coroutines.launch
@@ -32,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var driveManager: DriveManager
     private lateinit var telegramNotifier: TelegramNotifier
+    private lateinit var kmlGenerator: KmlGenerator
     
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -75,6 +77,7 @@ class MainActivity : AppCompatActivity() {
         
         driveManager = DriveManager(this)
         telegramNotifier = TelegramNotifier(TraceBackApp.instance.securePrefs)
+        kmlGenerator = KmlGenerator(this)
         
         setupUI()
         checkPermissions()
@@ -124,6 +127,11 @@ class MainActivity : AppCompatActivity() {
         // Google Drive sign-in button
         binding.buttonDriveSignin.setOnClickListener {
             signInToGoogle()
+        }
+        
+        // Sync now button
+        binding.buttonSyncNow.setOnClickListener {
+            syncToDriveNow()
         }
         
         // Battery optimization button
@@ -286,5 +294,45 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Abbrechen", null)
             .show()
+    }
+    
+    private fun syncToDriveNow() {
+        if (!driveManager.isReady()) {
+            Toast.makeText(this, "Bitte zuerst mit Google Drive verbinden", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        Toast.makeText(this, "Synchronisiere...", Toast.LENGTH_SHORT).show()
+        
+        lifecycleScope.launch {
+            try {
+                // Load today's points and generate KML
+                val points = kmlGenerator.loadTodayPoints()
+                
+                if (points.isEmpty()) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Keine Daten zum Synchronisieren", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                
+                val kmlContent = kmlGenerator.generateDailyKml()
+                val success = driveManager.uploadKml(kmlContent)
+                
+                runOnUiThread {
+                    if (success) {
+                        Toast.makeText(this@MainActivity, "✓ Synchronisiert (${points.size} Punkte)", Toast.LENGTH_SHORT).show()
+                        TraceBackApp.instance.securePrefs.lastSyncTimestamp = System.currentTimeMillis()
+                        updateStatusIndicators()
+                    } else {
+                        Toast.makeText(this@MainActivity, "Synchronisierung fehlgeschlagen", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Fehler: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 }

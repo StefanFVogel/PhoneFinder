@@ -189,6 +189,14 @@
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_sync_now"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Jetzt zu Drive synchronisieren"
+            style="@style/Widget.Material3.Button"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/button_telegram_setup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
