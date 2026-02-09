@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/text_network_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Netzwerk-Name"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/text_network_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="WiFi"
+        android:textColor="?android:textColorSecondary"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Wie soll dieses Netzwerk klassifiziert werden?"
+        android:layout_marginBottom="16dp" />
+
+    <RadioGroup
+        android:id="@+id/radio_group_type"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <RadioButton
+            android:id="@+id/radio_static"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🏠 Stationär (Zuhause, Büro)"
+            android:padding="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kein GPS-Tracking wenn verbunden"
+            android:textColor="?android:textColorSecondary"
+            android:textSize="12sp"
+            android:paddingStart="32dp"
+            android:paddingBottom="8dp" />
+
+        <RadioButton
+            android:id="@+id/radio_dynamic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🚗 Mobil (Auto, Schiff, Zug)"
+            android:padding="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="GPS-Tracking bleibt aktiv"
+            android:textColor="?android:textColorSecondary"
+            android:textSize="12sp"
+            android:paddingStart="32dp"
+            android:paddingBottom="8dp" />
+
+        <RadioButton
+            android:id="@+id/radio_learn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🤖 Automatisch lernen"
+            android:padding="8dp"
+            android:checked="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="App entscheidet anhand GPS-Bewegung"
+            android:textColor="?android:textColorSecondary"
+            android:textSize="12sp"
+            android:paddingStart="32dp" />
+
+    </RadioGroup>
+
+</LinearLayout>

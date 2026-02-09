@@ -22,12 +22,18 @@ import com.google.android.gms.common.api.Scope
 import com.google.api.services.drive.DriveScopes
 import com.traceback.R
 import com.traceback.TraceBackApp
+import com.traceback.data.NetworkType
 import com.traceback.databinding.ActivityMainBinding
 import com.traceback.drive.DriveManager
 import com.traceback.kml.KmlGenerator
+import com.traceback.scanner.NetworkScanner
 import com.traceback.service.TrackingService
 import com.traceback.telegram.TelegramNotifier
+import com.traceback.tracking.SmartTrackingManager
+import com.traceback.worker.DataAgingWorker
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class MainActivity : AppCompatActivity() {
     
@@ -35,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var driveManager: DriveManager
     private lateinit var telegramNotifier: TelegramNotifier
     private lateinit var kmlGenerator: KmlGenerator
+    private lateinit var smartTrackingManager: SmartTrackingManager
     
     private val locationPermissionRequest = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -79,6 +86,10 @@ class MainActivity : AppCompatActivity() {
         driveManager = DriveManager(this)
         telegramNotifier = TelegramNotifier(TraceBackApp.instance.securePrefs)
         kmlGenerator = KmlGenerator(this)
+        smartTrackingManager = SmartTrackingManager(this)
+        
+        // Schedule data aging
+        DataAgingWorker.schedule(this)
         
         setupUI()
         checkPermissions()
@@ -88,6 +99,85 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatusIndicators()
+        checkForNewNetworks()
+    }
+    
+    private fun checkForNewNetworks() {
+        lifecycleScope.launch {
+            val pendingNetwork = smartTrackingManager.getPendingNetwork()
+            pendingNetwork?.let { network ->
+                runOnUiThread {
+                    showNetworkClassifyDialog(network)
+                }
+            }
+        }
+    }
+    
+    private fun showNetworkClassifyDialog(network: NetworkScanner.NetworkInfo) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_network_classify, null)
+        
+        val textName = dialogView.findViewById<android.widget.TextView>(R.id.text_network_name)
+        val textType = dialogView.findViewById<android.widget.TextView>(R.id.text_network_type)
+        val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radio_group_type)
+        
+        textName.text = network.name
+        textType.text = if (network.isBluetooth) "Bluetooth" else "WiFi"
+        
+        // Pre-select dynamic if it looks like a vehicle
+        if (smartTrackingManager.networkScanner.isLikelyVehicle(network.name)) {
+            dialogView.findViewById<android.widget.RadioButton>(R.id.radio_dynamic).isChecked = true
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Neues Netzwerk erkannt")
+            .setView(dialogView)
+            .setPositiveButton("Speichern") { _, _ ->
+                val selectedType = when (radioGroup.checkedRadioButtonId) {
+                    R.id.radio_static -> NetworkType.STATIC
+                    R.id.radio_dynamic -> NetworkType.DYNAMIC
+                    else -> NetworkType.UNKNOWN  // Auto-learn
+                }
+                
+                lifecycleScope.launch {
+                    if (selectedType != NetworkType.UNKNOWN) {
+                        // Get current location for static networks
+                        val location = if (selectedType == NetworkType.STATIC) {
+                            getCurrentLocation()
+                        } else null
+                        
+                        smartTrackingManager.classifyNetwork(network, selectedType, location)
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "${network.name} als ${if (selectedType == NetworkType.STATIC) "stationär" else "mobil"} gespeichert",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Später", null)
+            .show()
+    }
+    
+    private suspend fun getCurrentLocation(): Location? {
+        return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+                continuation.resume(null) {}
+                return@suspendCancellableCoroutine
+            }
+            
+            val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
+            fusedLocationClient.getCurrentLocation(
+                com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                null
+            ).addOnSuccessListener { location ->
+                continuation.resume(location) {}
+            }.addOnFailureListener {
+                continuation.resume(null) {}
+            }
+        }
     }
     
     private fun setupUI() {
