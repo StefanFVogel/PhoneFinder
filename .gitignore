@@ -31,3 +31,7 @@ local.properties
 # Local configuration
 secrets.properties
 *.log
+
+# Debug keystore (local only, use GitHub secrets for CI)
+debug.keystore
+debug.keystore.b64
