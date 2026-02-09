@@ -35,27 +35,28 @@ jobs:
 
     - name: Build Debug APK
       id: build
-      run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log || true
+      continue-on-error: true
+      run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
       
-    - name: Upload build log on failure
-      if: failure() || steps.build.outcome == 'failure'
+    - name: Upload build log
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: build-log
         path: build.log
         
-    - name: Show last 200 lines of build log
+    - name: Show build errors
       if: always()
-      run: tail -200 build.log || true
-      
-    - name: Check build success
       run: |
-        if grep -q "BUILD SUCCESSFUL" build.log; then
-          echo "Build succeeded!"
-        else
-          echo "Build failed - see log above"
-          exit 1
-        fi
+        echo "=== LAST 100 LINES OF BUILD LOG ==="
+        tail -100 build.log
+        echo ""
+        echo "=== SEARCHING FOR ERRORS ==="
+        grep -i "error\|failure\|exception" build.log | head -50 || echo "No obvious errors found"
+        
+    - name: Fail if build failed
+      if: steps.build.outcome == 'failure'
+      run: exit 1
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
