@@ -19,7 +19,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.traceback.R
-import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.drive.DriveManager
 import com.traceback.kml.KmlGenerator
