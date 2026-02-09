@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TraceBack"
 include(":app")
+include(":jvm-tests")
