@@ -278,23 +278,100 @@ class MainActivity : AppCompatActivity() {
     private fun testLastBreath() {
         AlertDialog.Builder(this)
             .setTitle("Last Breath Test")
-            .setMessage("Dies sendet eine Test-Nachricht an Telegram. Fortfahren?")
+            .setMessage("Dies sendet eine Test-Nachricht mit aktuellem Standort an Telegram und speichert lastbreath.kml in Google Drive. Fortfahren?")
             .setPositiveButton("Test senden") { _, _ ->
-                lifecycleScope.launch {
-                    val success = telegramNotifier.sendEmergency(
-                        "🧪 TraceBack Test\n\nDies ist ein Test der Last Breath Funktion."
-                    )
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@MainActivity,
-                            if (success) "Test erfolgreich!" else "Test fehlgeschlagen",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                Toast.makeText(this, "Hole Standort...", Toast.LENGTH_SHORT).show()
+                
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+                    != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "GPS-Berechtigung fehlt", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
+                fusedLocationClient.getCurrentLocation(
+                    com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+                    null
+                ).addOnSuccessListener { location ->
+                    lifecycleScope.launch {
+                        sendLastBreathWithLocation(location)
+                    }
+                }.addOnFailureListener {
+                    lifecycleScope.launch {
+                        sendLastBreathWithLocation(null)
                     }
                 }
             }
             .setNegativeButton("Abbrechen", null)
             .show()
+    }
+    
+    private suspend fun sendLastBreathWithLocation(location: Location?) {
+        val message = buildString {
+            appendLine("🧪 TraceBack Test - Last Breath")
+            appendLine()
+            if (location != null) {
+                appendLine("📍 Aktueller Standort:")
+                appendLine("Lat: ${location.latitude}")
+                appendLine("Lon: ${location.longitude}")
+                appendLine("Genauigkeit: ${location.accuracy}m")
+                appendLine()
+                appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
+            } else {
+                appendLine("⚠️ Kein Standort verfügbar")
+            }
+            appendLine()
+            appendLine("Zeit: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+        }
+        
+        // Send to Telegram
+        val telegramSuccess = telegramNotifier.sendEmergency(message)
+        
+        // Save to Drive as lastbreath.kml
+        var driveSuccess = false
+        if (location != null && driveManager.isReady()) {
+            val kmlContent = generateLastBreathKml(location)
+            driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
+        }
+        
+        runOnUiThread {
+            val status = buildString {
+                append(if (telegramSuccess) "✓ Telegram" else "✗ Telegram")
+                append(" | ")
+                append(if (driveSuccess) "✓ Drive" else "✗ Drive")
+            }
+            Toast.makeText(this@MainActivity, status, Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    private fun generateLastBreathKml(location: Location): String {
+        val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date())
+        
+        return """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>TraceBack Last Breath</name>
+<description>Letzter bekannter Standort - ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}</description>
+<Style id="lastBreathStyle">
+    <IconStyle>
+        <color>ff0000ff</color>
+        <scale>1.5</scale>
+        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-stars.png</href></Icon>
+    </IconStyle>
+</Style>
+<Placemark>
+<name>🚨 Last Breath</name>
+<description>Genauigkeit: ${location.accuracy}m</description>
+<styleUrl>#lastBreathStyle</styleUrl>
+<TimeStamp><when>$timestamp</when></TimeStamp>
+<Point>
+<coordinates>${location.longitude},${location.latitude},${location.altitude}</coordinates>
+</Point>
+</Placemark>
+</Document>
+</kml>"""
     }
     
     private fun syncToDriveNow() {

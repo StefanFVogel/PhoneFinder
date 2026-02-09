@@ -195,6 +195,51 @@ class DriveManager(private val context: Context) {
     }
     
     /**
+     * Upload Last Breath KML (overwrites existing).
+     */
+    suspend fun uploadLastBreathKml(kmlContent: String): Boolean = withContext(Dispatchers.IO) {
+        val service = driveService ?: run {
+            Log.e(TAG, "Drive service not initialized")
+            return@withContext false
+        }
+        
+        val parentFolder = getOrCreateFolder() ?: run {
+            Log.e(TAG, "Failed to get folder")
+            return@withContext false
+        }
+        
+        try {
+            val fileName = "lastbreath.kml"
+            
+            // Check if file already exists
+            val existingFile = findFile(fileName, parentFolder)
+            
+            val content = ByteArrayContent.fromString(MIME_KML, kmlContent)
+            
+            if (existingFile != null) {
+                // Update existing file
+                service.files().update(existingFile.id, null, content).execute()
+                Log.i(TAG, "Updated $fileName")
+            } else {
+                // Create new file
+                val metadata = DriveFile().apply {
+                    name = fileName
+                    parents = listOf(parentFolder)
+                }
+                service.files().create(metadata, content)
+                    .setFields("id")
+                    .execute()
+                Log.i(TAG, "Created $fileName")
+            }
+            
+            return@withContext true
+        } catch (e: Exception) {
+            Log.e(TAG, "Last Breath upload failed", e)
+            return@withContext false
+        }
+    }
+    
+    /**
      * Download a KML file by ID.
      */
     suspend fun downloadFile(fileId: String): String? = withContext(Dispatchers.IO) {
