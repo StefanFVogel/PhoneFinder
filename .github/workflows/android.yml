@@ -47,17 +47,15 @@ jobs:
           -Pandroid.injected.signing.key.password=android \
           --stacktrace
 
-    - name: Build Release APK (signed)
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      run: |
-        ./gradlew assembleRelease \
-          -Pandroid.injected.signing.store.file=$PWD/app/keystore.jks \
-          -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-          -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-          -Pandroid.injected.signing.key.password=$KEYSTORE_PASSWORD \
-          --stacktrace
+    # Release build - skipped until KEYSTORE_BASE64 secret is configured
+    # - name: Build Release APK (signed)
+    #   env:
+    #     KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+    #     KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+    #     KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+    #   run: |
+    #     echo "$KEYSTORE_BASE64" | base64 -d > app/keystore.jks
+    #     ./gradlew assembleRelease ...
 
     - name: List APK files
       run: find app/build/outputs/apk -name "*.apk" -ls
@@ -69,9 +67,9 @@ jobs:
         path: app/build/outputs/apk/debug/*.apk
         retention-days: 30
 
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release
-        path: app/build/outputs/apk/release/*.apk
-        retention-days: 30
+    # - name: Upload Release APK
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: app-release
+    #     path: app/build/outputs/apk/release/*.apk
+    #     retention-days: 30
