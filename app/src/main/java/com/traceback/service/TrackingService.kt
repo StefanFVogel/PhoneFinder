@@ -264,26 +264,35 @@ class TrackingService : Service() {
             try {
                 val location = lastLocation
                 val wifiList = scanWifiNetworks()
+                val prefs = TraceBackApp.instance.securePrefs
                 
                 val message = buildLastBreathMessage(reason, location, wifiList)
                 
-                // Always try to save to Drive first (works without Telegram)
+                // Track results
                 var driveSuccess = false
+                var telegramSuccess = false
+                var smsSuccess = false
+                
+                // 1. Google Drive - always try if connected
                 if (location != null && driveManager.isReady()) {
                     val kmlContent = generateLastBreathKml(location)
                     driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
-                    Log.i(TAG, "Last Breath KML to Drive: ${if (driveSuccess) "OK" else "FAILED"}")
+                    Log.i(TAG, "Last Breath → Drive: ${if (driveSuccess) "✓" else "✗"}")
                 }
                 
-                // Try Telegram
-                val telegramSuccess = telegramNotifier.sendEmergency(message)
-                
-                // Fallback to SMS if Telegram fails
-                if (!telegramSuccess) {
-                    sendEmergencySms(message)
+                // 2. Telegram - if configured
+                if (!prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()) {
+                    telegramSuccess = telegramNotifier.sendEmergency(message)
+                    Log.i(TAG, "Last Breath → Telegram: ${if (telegramSuccess) "✓" else "✗"}")
                 }
                 
-                Log.i(TAG, "Last Breath sent: $reason (Drive=$driveSuccess, Telegram=$telegramSuccess)")
+                // 3. SMS - if configured (independent of Telegram)
+                if (!prefs.emergencySmsNumber.isNullOrBlank()) {
+                    smsSuccess = sendEmergencySmsWithResult(message)
+                    Log.i(TAG, "Last Breath → SMS: ${if (smsSuccess) "✓" else "✗"}")
+                }
+                
+                Log.i(TAG, "Last Breath complete: $reason (Drive=$driveSuccess, Telegram=$telegramSuccess, SMS=$smsSuccess)")
             } catch (e: Exception) {
                 Log.e(TAG, "Last Breath failed", e)
             }
@@ -352,15 +361,17 @@ class TrackingService : Service() {
             .filter { it.isNotBlank() }
     }
     
-    private fun sendEmergencySms(message: String) {
-        val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return
-        try {
+    private fun sendEmergencySmsWithResult(message: String): Boolean {
+        val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return false
+        return try {
             val smsManager = android.telephony.SmsManager.getDefault()
             val parts = smsManager.divideMessage(message)
             smsManager.sendMultipartTextMessage(number, null, parts, null, null)
             Log.i(TAG, "Emergency SMS sent to $number")
+            true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to send SMS", e)
+            false
         }
     }
     
