@@ -547,6 +547,16 @@ class MainActivity : AppCompatActivity() {
     
     private fun sendTestSms(message: String): Boolean {
         val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return false
+        
+        // Check SMS permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) 
+            != PackageManager.PERMISSION_GRANTED) {
+            // Request permission
+            requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
+            Toast.makeText(this, "SMS-Berechtigung erforderlich", Toast.LENGTH_SHORT).show()
+            return false
+        }
+        
         return try {
             val smsManager = android.telephony.SmsManager.getDefault()
             val parts = smsManager.divideMessage(message)
@@ -554,6 +564,7 @@ class MainActivity : AppCompatActivity() {
             true
         } catch (e: Exception) {
             e.printStackTrace()
+            Toast.makeText(this, "SMS-Fehler: ${e.message}", Toast.LENGTH_LONG).show()
             false
         }
     }

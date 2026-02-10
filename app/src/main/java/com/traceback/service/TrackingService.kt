@@ -363,6 +363,14 @@ class TrackingService : Service() {
     
     private fun sendEmergencySmsWithResult(message: String): Boolean {
         val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return false
+        
+        // Check SMS permission
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) 
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "SMS permission not granted")
+            return false
+        }
+        
         return try {
             val smsManager = android.telephony.SmsManager.getDefault()
             val parts = smsManager.divideMessage(message)
@@ -370,7 +378,7 @@ class TrackingService : Service() {
             Log.i(TAG, "Emergency SMS sent to $number")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send SMS", e)
+            Log.e(TAG, "Failed to send SMS: ${e.message}", e)
             false
         }
     }
