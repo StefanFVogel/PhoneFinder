@@ -26,4 +26,7 @@
     
     <string name="help_lastbreath_title">🚨 Last Breath</string>
     <string name="help_lastbreath_description">Die \"Last Breath\"-Funktion ist das Herzstück von TraceBack:\n\nWenn der Akku unter die eingestellte Schwelle fällt, sendet die App automatisch deinen letzten bekannten Standort an Telegram und speichert eine \"lastbreath.kml\" in Google Drive.\n\n⚡ Schwelle einstellen:\n• 5% = Standard für neuere Akkus\n• 10-15% = Empfohlen für ältere Akkus, die schnell von 10% auf 0% fallen\n• 20% = Maximum für sehr alte Geräte\n\nMit \"Last Breath testen\" kannst du prüfen, ob alles korrekt eingerichtet ist.</string>
+    
+    <string name="help_sms_title">📱 Notfall-SMS</string>
+    <string name="help_sms_description">Als Fallback zu Telegram kannst du eine Notfall-SMS-Nummer einrichten.\n\nWenn Telegram nicht erreichbar ist (kein Internet), wird eine SMS mit deinem Standort an diese Nummer gesendet.\n\n• Funktioniert ohne Internet\n• Internationale Nummern mit + Vorwahl\n• Kann leer gelassen werden wenn nicht benötigt</string>
 </resources>

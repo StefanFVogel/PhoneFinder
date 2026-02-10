@@ -218,6 +218,14 @@
             android:layout_height="wrap_content"
             android:text="Telegram Bot einrichten"
             style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_sms_setup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notfall-SMS einrichten"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_marginBottom="16dp" />
 
         <!-- Last Breath Threshold -->

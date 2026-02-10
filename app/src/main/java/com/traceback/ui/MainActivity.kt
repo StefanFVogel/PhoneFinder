@@ -215,6 +215,11 @@ class MainActivity : AppCompatActivity() {
             showTelegramSetupDialog()
         }
         
+        // SMS setup button
+        binding.buttonSmsSetup.setOnClickListener {
+            showSmsSetupDialog()
+        }
+        
         // Google Drive sign-in button
         binding.buttonDriveSignin.setOnClickListener {
             signInToGoogle()
@@ -379,6 +384,36 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Telegram-Konfiguration gespeichert", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+    
+    private fun showSmsSetupDialog() {
+        val prefs = TraceBackApp.instance.securePrefs
+        
+        val editText = com.google.android.material.textfield.TextInputEditText(this).apply {
+            hint = "+49 123 456789"
+            inputType = android.text.InputType.TYPE_CLASS_PHONE
+            setText(prefs.emergencySmsNumber ?: "")
+            setPadding(48, 32, 48, 32)
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Notfall-SMS Nummer")
+            .setMessage("Diese Nummer erhält eine SMS mit deinem Standort, wenn Telegram nicht erreichbar ist.\n\nFormat: +49 123 456789")
+            .setView(editText)
+            .setPositiveButton("Speichern") { _, _ ->
+                val number = editText.text?.toString()?.trim()
+                prefs.emergencySmsNumber = if (number.isNullOrBlank()) null else number
+                Toast.makeText(this, 
+                    if (number.isNullOrBlank()) "SMS-Nummer entfernt" else "SMS-Nummer gespeichert",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton("Abbrechen", null)
+            .setNeutralButton("Entfernen") { _, _ ->
+                prefs.emergencySmsNumber = null
+                Toast.makeText(this, "SMS-Nummer entfernt", Toast.LENGTH_SHORT).show()
+            }
             .show()
     }
     
