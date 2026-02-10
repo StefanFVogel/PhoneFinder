@@ -464,7 +464,7 @@ class MainActivity : AppCompatActivity() {
     private fun testLastBreath() {
         AlertDialog.Builder(this)
             .setTitle("Last Breath Test")
-            .setMessage("Dies sendet eine Test-Nachricht mit aktuellem Standort an Telegram und speichert lastbreath.kml in Google Drive. Fortfahren?")
+            .setMessage("Dies testet alle konfigurierten Kanäle:\n\n• Google Drive (lastbreath.kml)\n• Telegram (wenn eingerichtet)\n• SMS (wenn eingerichtet)\n\nFortfahren?")
             .setPositiveButton("Test senden") { _, _ ->
                 Toast.makeText(this, "Hole Standort...", Toast.LENGTH_SHORT).show()
                 
@@ -493,6 +493,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     private suspend fun sendLastBreathWithLocation(location: Location?) {
+        val prefs = TraceBackApp.instance.securePrefs
+        
         val message = buildString {
             appendLine("🧪 TraceBack Test - Last Breath")
             appendLine()
@@ -510,23 +512,49 @@ class MainActivity : AppCompatActivity() {
             appendLine("Zeit: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
         }
         
-        // Send to Telegram
-        val telegramSuccess = telegramNotifier.sendEmergency(message)
-        
-        // Save to Drive as lastbreath.kml
+        // Track results
         var driveSuccess = false
+        var telegramSuccess = false
+        var smsSuccess = false
+        
+        // 1. Save to Drive as lastbreath.kml
         if (location != null && driveManager.isReady()) {
             val kmlContent = generateLastBreathKml(location)
             driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
         }
         
+        // 2. Send to Telegram (if configured)
+        if (!prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()) {
+            telegramSuccess = telegramNotifier.sendEmergency(message)
+        }
+        
+        // 3. Send SMS (if configured)
+        if (!prefs.emergencySmsNumber.isNullOrBlank()) {
+            smsSuccess = sendTestSms(message)
+        }
+        
         runOnUiThread {
             val status = buildString {
-                append(if (telegramSuccess) "✓ Telegram" else "✗ Telegram")
-                append(" | ")
                 append(if (driveSuccess) "✓ Drive" else "✗ Drive")
+                append(" | ")
+                append(if (telegramSuccess) "✓ Telegram" else if (prefs.telegramBotToken.isNullOrBlank()) "- Telegram" else "✗ Telegram")
+                append(" | ")
+                append(if (smsSuccess) "✓ SMS" else if (prefs.emergencySmsNumber.isNullOrBlank()) "- SMS" else "✗ SMS")
             }
             Toast.makeText(this@MainActivity, status, Toast.LENGTH_LONG).show()
+        }
+    }
+    
+    private fun sendTestSms(message: String): Boolean {
+        val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return false
+        return try {
+            val smsManager = android.telephony.SmsManager.getDefault()
+            val parts = smsManager.divideMessage(message)
+            smsManager.sendMultipartTextMessage(number, null, parts, null, null)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
     
