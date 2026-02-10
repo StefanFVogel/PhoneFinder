@@ -267,7 +267,15 @@ class TrackingService : Service() {
                 
                 val message = buildLastBreathMessage(reason, location, wifiList)
                 
-                // Try Telegram first
+                // Always try to save to Drive first (works without Telegram)
+                var driveSuccess = false
+                if (location != null && driveManager.isReady()) {
+                    val kmlContent = generateLastBreathKml(location)
+                    driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
+                    Log.i(TAG, "Last Breath KML to Drive: ${if (driveSuccess) "OK" else "FAILED"}")
+                }
+                
+                // Try Telegram
                 val telegramSuccess = telegramNotifier.sendEmergency(message)
                 
                 // Fallback to SMS if Telegram fails
@@ -275,11 +283,43 @@ class TrackingService : Service() {
                     sendEmergencySms(message)
                 }
                 
-                Log.i(TAG, "Last Breath sent: $reason")
+                Log.i(TAG, "Last Breath sent: $reason (Drive=$driveSuccess, Telegram=$telegramSuccess)")
             } catch (e: Exception) {
                 Log.e(TAG, "Last Breath failed", e)
             }
         }
+    }
+    
+    private fun generateLastBreathKml(location: Location): String {
+        val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(java.util.Date())
+        
+        val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        
+        return """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>TraceBack Last Breath</name>
+<description>Letzter bekannter Standort - $dateStr</description>
+<Style id="lastBreathStyle">
+    <IconStyle>
+        <color>ff0000ff</color>
+        <scale>1.5</scale>
+        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-stars.png</href></Icon>
+    </IconStyle>
+</Style>
+<Placemark>
+<name>🚨 Last Breath</name>
+<description>Genauigkeit: ${location.accuracy}m</description>
+<styleUrl>#lastBreathStyle</styleUrl>
+<TimeStamp><when>$timestamp</when></TimeStamp>
+<Point>
+<coordinates>${location.longitude},${location.latitude},${location.altitude}</coordinates>
+</Point>
+</Placemark>
+</Document>
+</kml>"""
     }
     
     private fun buildLastBreathMessage(reason: String, location: Location?, wifiList: List<String>): String {
