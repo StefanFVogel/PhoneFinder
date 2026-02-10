@@ -25,5 +25,5 @@
     <string name="help_battery_description">Android beendet Apps im Hintergrund, um Akku zu sparen. Damit TraceBack zuverlässig funktioniert, muss die Akku-Optimierung für diese App deaktiviert werden.\n\nDer Button öffnet die Android-Einstellungen, wo du TraceBack von der Optimierung ausschließen kannst.</string>
     
     <string name="help_lastbreath_title">🚨 Last Breath</string>
-    <string name="help_lastbreath_description">Die \"Last Breath\"-Funktion ist das Herzstück von TraceBack:\n\nWenn der Akku kritisch niedrig wird, sendet die App automatisch deinen letzten bekannten Standort an Telegram und speichert eine \"lastbreath.kml\" in Google Drive.\n\nMit \"Last Breath testen\" kannst du prüfen, ob alles korrekt eingerichtet ist.</string>
+    <string name="help_lastbreath_description">Die \"Last Breath\"-Funktion ist das Herzstück von TraceBack:\n\nWenn der Akku unter die eingestellte Schwelle fällt, sendet die App automatisch deinen letzten bekannten Standort an Telegram und speichert eine \"lastbreath.kml\" in Google Drive.\n\n⚡ Schwelle einstellen:\n• 5% = Standard für neuere Akkus\n• 10-15% = Empfohlen für ältere Akkus, die schnell von 10% auf 0% fallen\n• 20% = Maximum für sehr alte Geräte\n\nMit \"Last Breath testen\" kannst du prüfen, ob alles korrekt eingerichtet ist.</string>
 </resources>

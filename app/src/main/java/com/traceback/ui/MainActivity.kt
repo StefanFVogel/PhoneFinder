@@ -239,6 +239,22 @@ class MainActivity : AppCompatActivity() {
         binding.buttonHelp.setOnClickListener {
             showHelpDialog()
         }
+        
+        // Last Breath threshold slider (1% - 20%)
+        val savedThreshold = prefs.lastBreathThreshold
+        binding.seekbarLastBreath.progress = savedThreshold
+        binding.textLastBreathThreshold.text = "${savedThreshold}%"
+        binding.seekbarLastBreath.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                val threshold = if (progress < 1) 1 else progress
+                binding.textLastBreathThreshold.text = "${threshold}%"
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                val threshold = if (seekBar.progress < 1) 1 else seekBar.progress
+                prefs.lastBreathThreshold = threshold
+            }
+        })
     }
     
     private fun checkPermissions() {

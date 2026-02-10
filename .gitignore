@@ -35,3 +35,4 @@ secrets.properties
 # Debug keystore (local only, use GitHub secrets for CI)
 debug.keystore
 debug.keystore.b64
+keystore.properties

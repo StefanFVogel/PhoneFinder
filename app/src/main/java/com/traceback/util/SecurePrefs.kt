@@ -31,6 +31,7 @@ class SecurePrefs(context: Context) {
         private const val KEY_TRACKING_ENABLED = "tracking_enabled"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_ts"
         private const val KEY_STATIONARY_ANCHORS = "stationary_anchors"
+        private const val KEY_LAST_BREATH_THRESHOLD = "last_breath_threshold"
     }
     
     // Telegram Configuration
@@ -54,6 +55,11 @@ class SecurePrefs(context: Context) {
     var trackingEnabled: Boolean
         get() = prefs.getBoolean(KEY_TRACKING_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_TRACKING_ENABLED, value).apply()
+    
+    // Last Breath threshold (1-20%, default 5%)
+    var lastBreathThreshold: Int
+        get() = prefs.getInt(KEY_LAST_BREATH_THRESHOLD, 5)
+        set(value) = prefs.edit().putInt(KEY_LAST_BREATH_THRESHOLD, value.coerceIn(1, 20)).apply()
     
     // Sync Status
     var lastSyncTimestamp: Long

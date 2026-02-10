@@ -33,7 +33,6 @@ class TrackingService : Service() {
     companion object {
         private const val TAG = "TrackingService"
         private const val NOTIFICATION_ID = 1
-        private const val LAST_BREATH_BATTERY_THRESHOLD = 2
         
         fun start(context: Context) {
             val intent = Intent(context, TrackingService::class.java)
@@ -59,15 +58,23 @@ class TrackingService : Service() {
     private var lastSyncTime = 0L
     private var lastStationaryLogTime = 0L
     
+    private var lastBreathTriggered = false
+    
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
             val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
             val percentage = (level * 100 / scale.toFloat()).toInt()
             
-            if (percentage <= LAST_BREATH_BATTERY_THRESHOLD) {
-                Log.w(TAG, "Battery critical ($percentage%), triggering Last Breath")
+            val threshold = TraceBackApp.instance.securePrefs.lastBreathThreshold
+            
+            if (percentage <= threshold && !lastBreathTriggered) {
+                Log.w(TAG, "Battery critical ($percentage% <= $threshold%), triggering Last Breath")
+                lastBreathTriggered = true
                 triggerLastBreath("Akku kritisch: $percentage%")
+            } else if (percentage > threshold + 5) {
+                // Reset trigger when battery charged above threshold + buffer
+                lastBreathTriggered = false
             }
         }
     }
