@@ -372,6 +372,7 @@ class MainActivity : AppCompatActivity() {
         binding.indicatorBattery.setImageResource(
             if (batteryOptDisabled) R.drawable.indicator_green else R.drawable.indicator_red
         )
+        binding.textBatteryStatus.text = if (batteryOptDisabled) "Akku-Optimierung aus ✓" else "Akku-Optimierung"
         
         // Last sync time
         val lastSync = prefs.lastSyncTimestamp

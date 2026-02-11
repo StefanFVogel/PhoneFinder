@@ -229,10 +229,11 @@
                         android:src="@drawable/indicator_red" />
 
                     <TextView
+                        android:id="@+id/text_battery_status"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Akku-Optimierung aus"
+                        android:text="Akku-Optimierung"
                         android:layout_marginStart="12dp" />
 
                     <ImageView
