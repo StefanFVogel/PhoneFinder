@@ -70,8 +70,26 @@ jobs:
           -Pandroid.injected.signing.key.password=$RELEASE_KEY_PASSWORD \
           --stacktrace
 
-    - name: List APK files
-      run: find app/build/outputs/apk -name "*.apk" -ls
+    - name: Build Release AAB (App Bundle)
+      if: env.HAVE_RELEASE_KEY == 'true'
+      env:
+        RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      run: |
+        ./gradlew bundleRelease \
+          -Pandroid.injected.signing.store.file=$PWD/app/release.keystore \
+          -Pandroid.injected.signing.store.password=$RELEASE_STORE_PASSWORD \
+          -Pandroid.injected.signing.key.alias=$RELEASE_KEY_ALIAS \
+          -Pandroid.injected.signing.key.password=$RELEASE_KEY_PASSWORD \
+          --stacktrace
+
+    - name: List build outputs
+      run: |
+        echo "=== APK files ==="
+        find app/build/outputs/apk -name "*.apk" -ls 2>/dev/null || true
+        echo "=== AAB files ==="
+        find app/build/outputs/bundle -name "*.aab" -ls 2>/dev/null || true
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
@@ -84,6 +102,14 @@ jobs:
       if: env.HAVE_RELEASE_KEY == 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: app-release
+        name: app-release-apk
         path: app/build/outputs/apk/release/*.apk
+        retention-days: 90
+
+    - name: Upload Release AAB (for Play Store)
+      if: env.HAVE_RELEASE_KEY == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-aab
+        path: app/build/outputs/bundle/release/*.aab
         retention-days: 90
