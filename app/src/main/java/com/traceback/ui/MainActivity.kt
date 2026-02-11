@@ -448,10 +448,18 @@ class MainActivity : AppCompatActivity() {
                 val number = editText.text?.toString()?.trim()
                 prefs.emergencySmsNumber = if (number.isNullOrBlank()) null else number
                 updateStatusIndicators()
-                Toast.makeText(this, 
-                    if (number.isNullOrBlank()) "SMS-Nummer entfernt" else "SMS-Nummer gespeichert",
-                    Toast.LENGTH_SHORT
-                ).show()
+                
+                // Request SMS permission if number is set and permission not granted
+                if (!number.isNullOrBlank() && 
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
+                    Toast.makeText(this, "SMS-Nummer gespeichert - bitte SMS-Berechtigung erteilen", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, 
+                        if (number.isNullOrBlank()) "SMS-Nummer entfernt" else "SMS-Nummer gespeichert ✓",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
             .setNegativeButton("Abbrechen", null)
             .setNeutralButton("Entfernen") { _, _ ->
@@ -497,10 +505,19 @@ class MainActivity : AppCompatActivity() {
     private fun requestBatteryExemption() {
         val pm = getSystemService(PowerManager::class.java)
         if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = Uri.parse("package:$packageName")
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Fallback: Open general battery settings
+                try {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                } catch (e2: Exception) {
+                    Toast.makeText(this, "Bitte Akku-Optimierung manuell in den Einstellungen deaktivieren", Toast.LENGTH_LONG).show()
+                }
             }
-            startActivity(intent)
         } else {
             Toast.makeText(this, "✓ Akku-Optimierung bereits deaktiviert", Toast.LENGTH_SHORT).show()
         }
