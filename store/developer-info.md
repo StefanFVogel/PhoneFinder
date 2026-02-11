@@ -19,7 +19,7 @@ Stefan Vogel
 
 ### Kontakt-E-Mail (öffentlich sichtbar)
 ```
-traceback.app@gmail.com
+tracebackphonefinder@gmail.com
 ```
 *Empfehlung: Separate E-Mail für App-Support*
 

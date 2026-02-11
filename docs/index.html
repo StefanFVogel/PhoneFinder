@@ -125,6 +125,20 @@
             margin: 1rem 0;
         }
         
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .warning {
+                background: #3d3520;
+            }
+        }
+        
         footer {
             margin-top: 3rem;
             padding-top: 2rem;
@@ -135,12 +149,6 @@
         }
         
         .content-en { display: none; }
-        
-        :target .content-de,
-        .content-de:target { display: none; }
-        
-        :target .content-en,
-        .content-en:target { display: block; }
     </style>
 </head>
 <body>
@@ -171,7 +179,13 @@
                 <h3>Wie werden die Daten verwendet?</h3>
                 <ul>
                     <li><strong>KML-Dateien:</strong> Ihre Standortdaten werden als KML-Datei in Ihrem persönlichen Google Drive gespeichert</li>
-                    <li><strong>Telegram-Benachrichtigung</strong> (optional): Bei aktiviertem "Last Breath" wird Ihr letzter Standort an Ihren eigenen Telegram-Bot gesendet</li>
+                    <li><strong>Last Breath (Notfall-Funktion):</strong> Bei niedrigem Akkustand wird Ihr letzter Standort an <em>alle konfigurierten Kanäle</em> gesendet:
+                        <ul>
+                            <li>Google Drive (lastbreath.kml)</li>
+                            <li>Telegram Bot (falls eingerichtet)</li>
+                            <li>Notfall-SMS (falls eingerichtet)</li>
+                        </ul>
+                    </li>
                     <li><strong>Keine Weitergabe:</strong> Ihre Daten werden niemals an Dritte verkauft oder weitergegeben</li>
                 </ul>
             </section>
@@ -182,34 +196,43 @@
                     <li>In Ihrem <strong>eigenen Google Drive</strong> (Ordner "TraceBack")</li>
                     <li>Lokal auf Ihrem Gerät</li>
                     <li>Optional: An Ihren eigenen Telegram-Bot</li>
+                    <li>Optional: Per SMS an eine von Ihnen festgelegte Nummer</li>
                 </ul>
             </section>
             
             <section>
                 <h3>Ihre Kontrolle</h3>
                 <div class="box">
-                    <strong>Master-Schalter AUS = Kein Tracking, keine Datenerfassung</strong>
+                    <strong>Master-Schalter AUS = Kein reguläres Tracking</strong>
+                </div>
+                <div class="warning">
+                    <strong>Wichtig:</strong> Die "Last Breath" Notfall-Funktion arbeitet unabhängig vom Master-Schalter. Bei kritischem Akkustand wird der letzte Standort auch bei ausgeschaltetem Tracking gesendet — das ist beabsichtigt, um Sie im Notfall zu schützen.
                 </div>
                 <ul>
                     <li>Sie können jederzeit alle KML-Dateien aus Ihrem Google Drive löschen</li>
                     <li>Die App speichert keine Daten auf externen Servern</li>
                     <li>Sie haben die volle Kontrolle über Ihre Standortdaten</li>
+                    <li>Sie können Last Breath deaktivieren indem Sie alle Kanäle entfernen</li>
                 </ul>
             </section>
             
             <section>
                 <h3>Berechtigungen</h3>
                 <ul>
-                    <li><strong>Standort:</strong> Für GPS-Tracking (nur wenn aktiviert)</li>
+                    <li><strong>Standort (Vordergrund & Hintergrund):</strong> Für GPS-Tracking, auch wenn die App nicht aktiv ist</li>
                     <li><strong>Internet:</strong> Für Google Drive Sync und Telegram</li>
-                    <li><strong>Vordergrund-Service:</strong> Für kontinuierliches Tracking</li>
+                    <li><strong>SMS senden:</strong> Für die Notfall-SMS Funktion (nur wenn eingerichtet)</li>
+                    <li><strong>Vordergrund-Service:</strong> Für kontinuierliches Tracking im Hintergrund</li>
+                    <li><strong>Benachrichtigungen:</strong> Für Tracking-Status Anzeige</li>
+                    <li><strong>Akku-Optimierung ignorieren:</strong> Damit die App im Hintergrund weiterlaufen kann</li>
+                    <li><strong>Autostart nach Neustart:</strong> Damit das Tracking nach einem Geräteneustart automatisch fortgesetzt wird</li>
                 </ul>
             </section>
             
             <section>
                 <h3>Kontakt</h3>
                 <p>Bei Fragen zur Datenschutzerklärung erreichen Sie uns unter:<br>
-                <a href="mailto:traceback.app@gmail.com">traceback.app@gmail.com</a></p>
+                <a href="mailto:tracebackphonefinder@gmail.com">tracebackphonefinder@gmail.com</a></p>
             </section>
         </div>
         
@@ -229,7 +252,13 @@
                 <h3>How is the data used?</h3>
                 <ul>
                     <li><strong>KML files:</strong> Your location data is saved as KML files in your personal Google Drive</li>
-                    <li><strong>Telegram notification</strong> (optional): With "Last Breath" enabled, your last location is sent to your own Telegram bot</li>
+                    <li><strong>Last Breath (emergency feature):</strong> When battery is critically low, your last location is sent to <em>all configured channels</em>:
+                        <ul>
+                            <li>Google Drive (lastbreath.kml)</li>
+                            <li>Telegram Bot (if configured)</li>
+                            <li>Emergency SMS (if configured)</li>
+                        </ul>
+                    </li>
                     <li><strong>No sharing:</strong> Your data is never sold or shared with third parties</li>
                 </ul>
             </section>
@@ -240,34 +269,43 @@
                     <li>In <strong>your own Google Drive</strong> ("TraceBack" folder)</li>
                     <li>Locally on your device</li>
                     <li>Optionally: To your own Telegram bot</li>
+                    <li>Optionally: Via SMS to a number you specify</li>
                 </ul>
             </section>
             
             <section>
                 <h3>Your Control</h3>
                 <div class="box">
-                    <strong>Master switch OFF = No tracking, no data collection</strong>
+                    <strong>Master switch OFF = No regular tracking</strong>
+                </div>
+                <div class="warning">
+                    <strong>Important:</strong> The "Last Breath" emergency feature works independently of the master switch. When battery is critical, your last location will be sent even if tracking is disabled — this is intentional to protect you in emergencies.
                 </div>
                 <ul>
                     <li>You can delete all KML files from your Google Drive at any time</li>
                     <li>The app stores no data on external servers</li>
                     <li>You have full control over your location data</li>
+                    <li>You can disable Last Breath by removing all channels</li>
                 </ul>
             </section>
             
             <section>
                 <h3>Permissions</h3>
                 <ul>
-                    <li><strong>Location:</strong> For GPS tracking (only when enabled)</li>
+                    <li><strong>Location (Foreground & Background):</strong> For GPS tracking, even when app is not active</li>
                     <li><strong>Internet:</strong> For Google Drive sync and Telegram</li>
-                    <li><strong>Foreground Service:</strong> For continuous tracking</li>
+                    <li><strong>Send SMS:</strong> For the emergency SMS feature (only if configured)</li>
+                    <li><strong>Foreground Service:</strong> For continuous background tracking</li>
+                    <li><strong>Notifications:</strong> For tracking status display</li>
+                    <li><strong>Ignore Battery Optimization:</strong> So the app can continue running in background</li>
+                    <li><strong>Autostart after Reboot:</strong> So tracking automatically resumes after device restart</li>
                 </ul>
             </section>
             
             <section>
                 <h3>Contact</h3>
                 <p>For questions about this privacy policy, contact us at:<br>
-                <a href="mailto:traceback.app@gmail.com">traceback.app@gmail.com</a></p>
+                <a href="mailto:tracebackphonefinder@gmail.com">tracebackphonefinder@gmail.com</a></p>
             </section>
         </div>
     </main>
@@ -278,7 +316,6 @@
     </footer>
     
     <script>
-        // Simple language toggle
         document.querySelectorAll('.lang-switch a').forEach(link => {
             link.addEventListener('click', function(e) {
                 const lang = this.getAttribute('href').substring(1);
