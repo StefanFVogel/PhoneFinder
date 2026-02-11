@@ -47,15 +47,26 @@ jobs:
           -Pandroid.injected.signing.key.password=android \
           --stacktrace
 
-    # Release build - skipped until KEYSTORE_BASE64 secret is configured
-    # - name: Build Release APK (signed)
-    #   env:
-    #     KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-    #     KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-    #     KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-    #   run: |
-    #     echo "$KEYSTORE_BASE64" | base64 -d > app/keystore.jks
-    #     ./gradlew assembleRelease ...
+    - name: Decode Release Keystore
+      if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+      env:
+        RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      run: |
+        echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > app/release.keystore
+
+    - name: Build Release APK
+      if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+      env:
+        RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+        RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      run: |
+        ./gradlew assembleRelease \
+          -Pandroid.injected.signing.store.file=$PWD/app/release.keystore \
+          -Pandroid.injected.signing.store.password=$RELEASE_STORE_PASSWORD \
+          -Pandroid.injected.signing.key.alias=$RELEASE_KEY_ALIAS \
+          -Pandroid.injected.signing.key.password=$RELEASE_KEY_PASSWORD \
+          --stacktrace
 
     - name: List APK files
       run: find app/build/outputs/apk -name "*.apk" -ls
@@ -67,9 +78,10 @@ jobs:
         path: app/build/outputs/apk/debug/*.apk
         retention-days: 30
 
-    # - name: Upload Release APK
-    #   uses: actions/upload-artifact@v4
-    #   with:
-    #     name: app-release
-    #     path: app/build/outputs/apk/release/*.apk
-    #     retention-days: 30
+    - name: Upload Release APK
+      if: ${{ secrets.RELEASE_KEYSTORE_BASE64 != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: app/build/outputs/apk/release/*.apk
+        retention-days: 90
