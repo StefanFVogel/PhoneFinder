@@ -54,14 +54,14 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Standortberechtigung erforderlich", Toast.LENGTH_LONG).show()
             }
         }
+        updateStatusIndicators()
     }
     
     private val backgroundLocationRequest = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            updateStatusIndicators()
-        } else {
+        updateStatusIndicators()
+        if (!granted) {
             Toast.makeText(this, "Hintergrund-Standort erforderlich für Tracking", Toast.LENGTH_LONG).show()
         }
     }
@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         task.addOnSuccessListener { account ->
             driveManager.initialize(account)
             updateStatusIndicators()
+            Toast.makeText(this, "Mit Google Drive verbunden", Toast.LENGTH_SHORT).show()
         }.addOnFailureListener {
             Toast.makeText(this, "Google Sign-In fehlgeschlagen", Toast.LENGTH_SHORT).show()
         }
@@ -183,7 +184,48 @@ class MainActivity : AppCompatActivity() {
     private fun setupUI() {
         val prefs = TraceBackApp.instance.securePrefs
         
-        // Tracking toggle
+        // === STATUS ROW CLICK HANDLERS ===
+        
+        // GPS row - opens app settings
+        binding.rowGps.setOnClickListener {
+            val hasLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (!hasLocation) {
+                checkPermissions()
+            } else {
+                // Open app settings for background location
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            }
+        }
+        
+        // Drive row - sign in or show status
+        binding.rowDrive.setOnClickListener {
+            if (driveManager.isReady()) {
+                Toast.makeText(this, "✓ Mit Google Drive verbunden", Toast.LENGTH_SHORT).show()
+            } else {
+                signInToGoogle()
+            }
+        }
+        
+        // Telegram row - setup dialog
+        binding.rowTelegram.setOnClickListener {
+            showTelegramSetupDialog()
+        }
+        
+        // SMS row - setup dialog
+        binding.rowSms.setOnClickListener {
+            showSmsSetupDialog()
+        }
+        
+        // Battery row - battery optimization settings
+        binding.rowBattery.setOnClickListener {
+            requestBatteryExemption()
+        }
+        
+        // === TRACKING CONTROLS ===
+        
         binding.switchTracking.isChecked = prefs.trackingEnabled
         binding.switchTracking.setOnCheckedChangeListener { _, isChecked ->
             prefs.trackingEnabled = isChecked
@@ -210,42 +252,8 @@ class MainActivity : AppCompatActivity() {
             }
         })
         
-        // Telegram setup button
-        binding.buttonTelegramSetup.setOnClickListener {
-            showTelegramSetupDialog()
-        }
+        // === LAST BREATH THRESHOLD ===
         
-        // SMS setup button
-        binding.buttonSmsSetup.setOnClickListener {
-            showSmsSetupDialog()
-        }
-        
-        // Google Drive sign-in button
-        binding.buttonDriveSignin.setOnClickListener {
-            signInToGoogle()
-        }
-        
-        // Sync now button
-        binding.buttonSyncNow.setOnClickListener {
-            syncToDriveNow()
-        }
-        
-        // Battery optimization button
-        binding.buttonBatteryOptimization.setOnClickListener {
-            requestBatteryExemption()
-        }
-        
-        // Test Last Breath button
-        binding.buttonTestLastBreath.setOnClickListener {
-            testLastBreath()
-        }
-        
-        // Help button
-        binding.buttonHelp.setOnClickListener {
-            showHelpDialog()
-        }
-        
-        // Last Breath threshold slider (1% - 20%)
         val savedThreshold = prefs.lastBreathThreshold
         binding.seekbarLastBreath.progress = savedThreshold
         binding.textLastBreathThreshold.text = "${savedThreshold}%"
@@ -260,6 +268,20 @@ class MainActivity : AppCompatActivity() {
                 prefs.lastBreathThreshold = threshold
             }
         })
+        
+        // === ACTION BUTTONS ===
+        
+        binding.buttonSyncNow.setOnClickListener {
+            syncToDriveNow()
+        }
+        
+        binding.buttonTestLastBreath.setOnClickListener {
+            testLastBreath()
+        }
+        
+        binding.buttonHelp.setOnClickListener {
+            showHelpDialog()
+        }
     }
     
     private fun checkPermissions() {
@@ -303,7 +325,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateStatusIndicators() {
         val prefs = TraceBackApp.instance.securePrefs
         
-        // GPS Status
+        // GPS Status (always required)
         val hasLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val hasBackground = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -315,21 +337,41 @@ class MainActivity : AppCompatActivity() {
             else R.drawable.indicator_red
         )
         
-        // Drive Status
+        // Check which save channels are configured
         val driveReady = driveManager.isReady()
-        binding.indicatorDrive.setImageResource(
-            if (driveReady) R.drawable.indicator_green else R.drawable.indicator_red
-        )
+        val telegramConfigured = !prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()
+        val smsConfigured = !prefs.emergencySmsNumber.isNullOrBlank()
+        
+        // Count configured channels
+        val configuredChannels = listOf(driveReady, telegramConfigured, smsConfigured).count { it }
+        
+        // Color logic: RED if no channels configured, YELLOW if optional (other channel exists), GREEN if configured
+        fun getChannelIndicator(isConfigured: Boolean): Int {
+            return when {
+                isConfigured -> R.drawable.indicator_green
+                configuredChannels == 0 -> R.drawable.indicator_red  // No channels = all red
+                else -> R.drawable.indicator_yellow  // At least one other channel = yellow
+            }
+        }
+        
+        // Drive Status
+        binding.indicatorDrive.setImageResource(getChannelIndicator(driveReady))
+        binding.textDriveStatus.text = if (driveReady) "Google Drive ✓" else "Google Drive"
         
         // Telegram Status
-        lifecycleScope.launch {
-            val telegramReady = prefs.isConfiguredForEmergency() && telegramNotifier.testConnection()
-            binding.indicatorTelegram.setImageResource(
-                if (telegramReady) R.drawable.indicator_green
-                else if (prefs.isConfiguredForEmergency()) R.drawable.indicator_yellow
-                else R.drawable.indicator_red
-            )
-        }
+        binding.indicatorTelegram.setImageResource(getChannelIndicator(telegramConfigured))
+        binding.textTelegramStatus.text = if (telegramConfigured) "Telegram Bot ✓" else "Telegram Bot"
+        
+        // SMS Status
+        binding.indicatorSms.setImageResource(getChannelIndicator(smsConfigured))
+        binding.textSmsStatus.text = if (smsConfigured) "Notfall-SMS ✓" else "Notfall-SMS"
+        
+        // Battery Status (always important for background tracking)
+        val pm = getSystemService(PowerManager::class.java)
+        val batteryOptDisabled = pm.isIgnoringBatteryOptimizations(packageName)
+        binding.indicatorBattery.setImageResource(
+            if (batteryOptDisabled) R.drawable.indicator_green else R.drawable.indicator_red
+        )
         
         // Last sync time
         val lastSync = prefs.lastSyncTimestamp
@@ -404,6 +446,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Speichern") { _, _ ->
                 val number = editText.text?.toString()?.trim()
                 prefs.emergencySmsNumber = if (number.isNullOrBlank()) null else number
+                updateStatusIndicators()
                 Toast.makeText(this, 
                     if (number.isNullOrBlank()) "SMS-Nummer entfernt" else "SMS-Nummer gespeichert",
                     Toast.LENGTH_SHORT
@@ -412,6 +455,7 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Abbrechen", null)
             .setNeutralButton("Entfernen") { _, _ ->
                 prefs.emergencySmsNumber = null
+                updateStatusIndicators()
                 Toast.makeText(this, "SMS-Nummer entfernt", Toast.LENGTH_SHORT).show()
             }
             .show()
@@ -457,7 +501,7 @@ class MainActivity : AppCompatActivity() {
             }
             startActivity(intent)
         } else {
-            Toast.makeText(this, "Akku-Optimierung bereits deaktiviert", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "✓ Akku-Optimierung bereits deaktiviert", Toast.LENGTH_SHORT).show()
         }
     }
     
@@ -602,6 +646,8 @@ class MainActivity : AppCompatActivity() {
     private fun syncToDriveNow() {
         if (!driveManager.isReady()) {
             Toast.makeText(this, "Bitte zuerst mit Google Drive verbinden", Toast.LENGTH_SHORT).show()
+            // Open Drive setup
+            signInToGoogle()
             return
         }
         

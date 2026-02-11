@@ -36,7 +36,9 @@
                 android:contentDescription="Hilfe" />
         </LinearLayout>
 
-        <!-- Status Dashboard -->
+        <!-- ==================== -->
+        <!-- 1. STATUS & KONFIGURATION -->
+        <!-- ==================== -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -52,77 +54,200 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Status"
+                    android:text="Status &amp; Konfiguration"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="12dp" />
 
-                <!-- GPS Status -->
+                <!-- GPS Status - clickable -->
                 <LinearLayout
+                    android:id="@+id/row_gps"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
+                    android:paddingVertical="12dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:id="@+id/indicator_gps"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:src="@drawable/indicator_red" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="GPS Berechtigung"
                         android:layout_marginStart="12dp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_menu_more"
+                        android:alpha="0.5" />
                 </LinearLayout>
 
-                <!-- Drive Status -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?android:attr/listDivider" />
+
+                <!-- Drive Status - clickable -->
                 <LinearLayout
+                    android:id="@+id/row_drive"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
+                    android:paddingVertical="12dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:id="@+id/indicator_drive"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:src="@drawable/indicator_red" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/text_drive_status"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="Google Drive"
                         android:layout_marginStart="12dp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_menu_more"
+                        android:alpha="0.5" />
                 </LinearLayout>
 
-                <!-- Telegram Status -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?android:attr/listDivider" />
+
+                <!-- Telegram Status - clickable -->
                 <LinearLayout
+                    android:id="@+id/row_telegram"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:paddingVertical="12dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <ImageView
                         android:id="@+id/indicator_telegram"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
                         android:src="@drawable/indicator_red" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:id="@+id/text_telegram_status"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="Telegram Bot"
                         android:layout_marginStart="12dp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_menu_more"
+                        android:alpha="0.5" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?android:attr/listDivider" />
+
+                <!-- SMS Status - clickable -->
+                <LinearLayout
+                    android:id="@+id/row_sms"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="12dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/indicator_sms"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/indicator_red" />
+
+                    <TextView
+                        android:id="@+id/text_sms_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Notfall-SMS"
+                        android:layout_marginStart="12dp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_menu_more"
+                        android:alpha="0.5" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?android:attr/listDivider" />
+
+                <!-- Battery Optimization - clickable -->
+                <LinearLayout
+                    android:id="@+id/row_battery"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="12dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/indicator_battery"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/indicator_red" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Akku-Optimierung aus"
+                        android:layout_marginStart="12dp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_menu_more"
+                        android:alpha="0.5" />
                 </LinearLayout>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Tracking Control -->
+        <!-- ==================== -->
+        <!-- 2. TRACKING -->
+        <!-- ==================== -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -145,7 +270,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Tracking aktiv"
+                        android:text="Tracking"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -161,6 +286,7 @@
                     android:layout_height="wrap_content"
                     android:text="Noch nicht synchronisiert"
                     android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
                     android:layout_marginTop="4dp" />
 
                 <!-- Distance Slider -->
@@ -168,6 +294,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Erfassungsabstand"
+                    android:textSize="14sp"
                     android:layout_marginTop="16dp" />
 
                 <LinearLayout
@@ -195,40 +322,9 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Setup Buttons -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_drive_signin"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Mit Google Drive verbinden"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_sync_now"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Jetzt zu Drive synchronisieren"
-            style="@style/Widget.Material3.Button"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_telegram_setup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Telegram Bot einrichten"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_sms_setup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Notfall-SMS einrichten"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Last Breath Threshold -->
+        <!-- ==================== -->
+        <!-- 3. LAST BREATH SCHWELLE -->
+        <!-- ==================== -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -245,7 +341,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Last Breath Schwelle"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -283,12 +379,15 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ==================== -->
+        <!-- 4. AKTIONEN -->
+        <!-- ==================== -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_battery_optimization"
+            android:id="@+id/button_sync_now"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Akku-Optimierung deaktivieren"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:text="Jetzt synchronisieren"
+            style="@style/Widget.Material3.Button"
             android:layout_marginBottom="8dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -296,8 +395,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Last Breath testen"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_marginTop="16dp" />
+            style="@style/Widget.Material3.Button.TonalButton" />
 
     </LinearLayout>
 </ScrollView>
