@@ -75,40 +75,10 @@ object LastBreathSender {
             Log.i(TAG, "Drive upload: KML=${if (kmlSuccess) "✓" else "✗"}, HTML=${if (htmlSuccess) "✓" else "✗"}")
         }
         
-        // 5. Send Telegram (Text + Location-Pin, like Ping)
+        // 5. Send Telegram (full message with Maps link for preview)
         if (!prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()) {
-            val title = if (isTest) "🧪 <b>TraceBack TEST</b>" else "🚨 <b>TraceBack Last Breath</b>"
-            val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())
-            
-            // Short message first
-            val shortMessage = buildString {
-                appendLine(title)
-                appendLine("⚡ $reason")
-                appendLine("📍 $dateStr")
-                if (location != null) {
-                    appendLine("📏 Genauigkeit: ${location.accuracy.toInt()}m")
-                }
-                if (wifiNetworks.isNotEmpty()) {
-                    appendLine("📶 ${wifiNetworks.size} WLANs sichtbar")
-                }
-            }
-            
-            val textSuccess = telegramNotifier.sendEmergency(shortMessage)
-            
-            // Then Location-Pin (if available)
-            val locationSuccess = if (location != null) {
-                telegramNotifier.sendLocation(location.latitude, location.longitude)
-            } else false
-            
-            // Then WiFi list if any
-            if (wifiNetworks.isNotEmpty()) {
-                val wifiMessage = "📶 <b>Sichtbare WLANs:</b>\n" + 
-                    wifiNetworks.take(10).joinToString("\n") { "• $it" }
-                telegramNotifier.sendEmergency(wifiMessage)
-            }
-            
-            telegramSuccess = textSuccess || locationSuccess
-            Log.i(TAG, "Telegram send: text=${if (textSuccess) "✓" else "✗"}, location=${if (locationSuccess) "✓" else "✗"}")
+            telegramSuccess = telegramNotifier.sendEmergency(message)
+            Log.i(TAG, "Telegram send: ${if (telegramSuccess) "✓" else "✗"}")
         }
         
         // 6. Send SMS

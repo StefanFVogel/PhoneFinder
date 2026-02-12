@@ -311,24 +311,28 @@ class PingWorker(
     }
     
     private suspend fun sendPingToTelegram(notifier: TelegramNotifier, location: Location?): Boolean {
-        val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())
+        val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         
-        return if (location != null) {
-            // Send location pin + text
-            val textSuccess = notifier.sendEmergency(
-                "📡 <b>TraceBack Ping</b>\n" +
-                "📍 $dateStr\n" +
-                "📏 Genauigkeit: ${location.accuracy.toInt()}m"
-            )
-            val locationSuccess = notifier.sendLocation(location.latitude, location.longitude)
-            textSuccess || locationSuccess
-        } else {
-            notifier.sendEmergency(
-                "📡 <b>TraceBack Ping</b>\n" +
-                "⚠️ $dateStr\n" +
-                "Standort konnte nicht ermittelt werden"
-            )
+        val message = buildString {
+            appendLine("📡 TraceBack Ping")
+            appendLine()
+            
+            if (location != null) {
+                appendLine("📍 Standort:")
+                appendLine("Lat: ${location.latitude}")
+                appendLine("Lon: ${location.longitude}")
+                appendLine("Genauigkeit: ${location.accuracy.toInt()}m")
+                appendLine()
+                appendLine("🗺️ https://maps.google.com/maps?q=${location.latitude},${location.longitude}")
+            } else {
+                appendLine("⚠️ Standort konnte nicht ermittelt werden")
+            }
+            
+            appendLine()
+            appendLine("Zeit: $dateStr")
         }
+        
+        return notifier.sendEmergency(message)
     }
     
     private fun showNotification(title: String, message: String) {
