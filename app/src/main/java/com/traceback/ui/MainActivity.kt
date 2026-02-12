@@ -595,140 +595,39 @@ class MainActivity : AppCompatActivity() {
     private fun testLastBreath() {
         AlertDialog.Builder(this)
             .setTitle("Last Breath Test")
-            .setMessage("Dies testet alle konfigurierten Kanäle:\n\n• Google Drive (last_breath_*.kml)\n• Telegram (wenn eingerichtet)\n• SMS (wenn eingerichtet)\n\nFortfahren?")
+            .setMessage("Dies testet alle konfigurierten Kanäle:\n\n• Google Drive (last_breath_*.kml)\n• Telegram (wenn eingerichtet)\n• SMS (wenn eingerichtet)\n• WiFi-Netzwerke werden gescannt\n\nFortfahren?")
             .setPositiveButton("Test senden") { _, _ ->
-                Toast.makeText(this, "Hole Standort...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Sende Last Breath Test...", Toast.LENGTH_SHORT).show()
                 
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-                    != PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "GPS-Berechtigung fehlt", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                
-                val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
-                fusedLocationClient.getCurrentLocation(
-                    com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-                    null
-                ).addOnSuccessListener { location ->
-                    lifecycleScope.launch {
-                        sendLastBreathWithLocation(location)
+                lifecycleScope.launch {
+                    val result = com.traceback.util.LastBreathSender.send(
+                        context = this@MainActivity,
+                        reason = "Manueller Test",
+                        isTest = true
+                    )
+                    
+                    // Show notification
+                    if (result.location != null) {
+                        showLocationSentNotification("Last Breath Test", result.location)
                     }
-                }.addOnFailureListener {
-                    lifecycleScope.launch {
-                        sendLastBreathWithLocation(null)
+                    
+                    // Show result
+                    runOnUiThread {
+                        val prefs = TraceBackApp.instance.securePrefs
+                        val status = buildString {
+                            append(if (result.driveSuccess) "✓ Drive" else "✗ Drive")
+                            append(" | ")
+                            append(if (result.telegramSuccess) "✓ Telegram" else if (prefs.telegramBotToken.isNullOrBlank()) "- Telegram" else "✗ Telegram")
+                            append(" | ")
+                            append(if (result.smsSuccess) "✓ SMS" else if (prefs.emergencySmsNumber.isNullOrBlank()) "- SMS" else "✗ SMS")
+                            append("\n📶 ${result.wifiNetworks.size} WLANs gefunden")
+                        }
+                        Toast.makeText(this@MainActivity, status, Toast.LENGTH_LONG).show()
                     }
                 }
             }
             .setNegativeButton("Abbrechen", null)
             .show()
-    }
-    
-    private suspend fun sendLastBreathWithLocation(location: Location?) {
-        val prefs = TraceBackApp.instance.securePrefs
-        
-        val message = buildString {
-            appendLine("🧪 TraceBack Test - Last Breath")
-            appendLine()
-            if (location != null) {
-                appendLine("📍 Aktueller Standort:")
-                appendLine("Lat: ${location.latitude}")
-                appendLine("Lon: ${location.longitude}")
-                appendLine()
-                appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
-            } else {
-                appendLine("⚠️ Kein Standort verfügbar")
-            }
-            appendLine()
-            appendLine("Zeit: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
-        }
-        
-        var driveSuccess = false
-        var telegramSuccess = false
-        var smsSuccess = false
-        
-        // 1. Drive
-        if (location != null && driveManager.isReady()) {
-            val kmlContent = generateLastBreathKml(location)
-            driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
-        }
-        
-        // 2. Telegram
-        if (!prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()) {
-            telegramSuccess = telegramNotifier.sendEmergency(message)
-        }
-        
-        // 3. SMS
-        if (!prefs.emergencySmsNumber.isNullOrBlank()) {
-            smsSuccess = sendTestSms(message)
-        }
-        
-        // Show notification that location was sent
-        if (location != null) {
-            showLocationSentNotification("Last Breath Test", location)
-        }
-        
-        runOnUiThread {
-            val status = buildString {
-                append(if (driveSuccess) "✓ Drive" else "✗ Drive")
-                append(" | ")
-                append(if (telegramSuccess) "✓ Telegram" else if (prefs.telegramBotToken.isNullOrBlank()) "- Telegram" else "✗ Telegram")
-                append(" | ")
-                append(if (smsSuccess) "✓ SMS" else if (prefs.emergencySmsNumber.isNullOrBlank()) "- SMS" else "✗ SMS")
-            }
-            Toast.makeText(this@MainActivity, status, Toast.LENGTH_LONG).show()
-        }
-    }
-    
-    private fun generateLastBreathKml(location: Location): String {
-        val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }.format(Date())
-        
-        val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        
-        return """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-<name>TraceBack Last Breath</name>
-<description>Letzter bekannter Standort - $dateStr</description>
-<Style id="lastBreathStyle">
-    <IconStyle>
-        <color>ff0000ff</color>
-        <scale>1.5</scale>
-        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-stars.png</href></Icon>
-    </IconStyle>
-</Style>
-<Placemark>
-<name>🚨 Last Breath</name>
-<description>Genauigkeit: ${location.accuracy}m</description>
-<styleUrl>#lastBreathStyle</styleUrl>
-<TimeStamp><when>$timestamp</when></TimeStamp>
-<Point>
-<coordinates>${location.longitude},${location.latitude},${location.altitude}</coordinates>
-</Point>
-</Placemark>
-</Document>
-</kml>"""
-    }
-    
-    private fun sendTestSms(message: String): Boolean {
-        val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return false
-        
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) 
-            != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
-            return false
-        }
-        
-        return try {
-            val smsManager = android.telephony.SmsManager.getDefault()
-            val parts = smsManager.divideMessage(message)
-            smsManager.sendMultipartTextMessage(number, null, parts, null, null)
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
     }
     
     /**
