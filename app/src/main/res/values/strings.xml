@@ -7,10 +7,10 @@
     <string name="help_app_description">TraceBack sichert deinen Standort bei kritischem Akkustand und speichert ihn in Google Drive. Im Notfall sendet die App deinen letzten bekannten Standort per Telegram oder SMS.\n\nDie App ist darauf optimiert, auch bei niedrigem Akkustand zu funktionieren und die letzten Koordinaten noch zu übermitteln.</string>
     
     <string name="help_status_title">📊 Status-Anzeige</string>
-    <string name="help_status_description">• 🟢 Grün = Alles bereit\n• 🟡 Gelb = Teilweise eingerichtet\n• 🔴 Rot = Nicht konfiguriert\n\nGPS: Benötigt \"Immer erlauben\" für Last Breath.\nGoogle Drive: Für automatische KML-Sicherung.\nTelegram: Für Notfall-Benachrichtigungen.</string>
+    <string name="help_status_description">• 🟢 Grün = Alles bereit\n• 🟡 Gelb = Teilweise eingerichtet\n• 🔴 Rot = Nicht konfiguriert\n\nGPS: Benötigt \"Immer erlauben\" für Last Breath.\nGoogle Drive: Für automatische KML-Sicherung.\nTelegram: Für Notfall-Benachrichtigungen.\n\n💡 Bei jedem Feature wird VOR der Android-Berechtigung erklärt, warum sie benötigt wird.</string>
     
     <string name="help_ping_title">📡 Ping-Überwachung</string>
-    <string name="help_ping_description">Der Schalter aktiviert/deaktiviert die Ping-Überwachung.\n\nWenn aktiviert:\n• Periodische Standort-Checks\n• Speichert ping.kml in Google Drive\n• Prüft ob alle Berechtigungen noch aktiv sind\n\nDer Ping zeigt dir, dass die App noch funktioniert.</string>
+    <string name="help_ping_description">Der Schalter aktiviert/deaktiviert die Ping-Überwachung.\n\nWenn aktiviert:\n• Periodische Standort-Checks\n• Sendet an ALLE konfigurierten Kanäle (Drive + Telegram)\n• Prüft ob alle Berechtigungen noch aktiv sind\n\n⏱️ Intervall-Farben:\n• 🟡 Gelb (15min, 1h) = Hohe Nachrichtenzahl\n• 🟢 Grün (5h, 24h) = Niedrige Nachrichtenzahl\n\n💡 Warum kein Rot? Android kann Berechtigungen im Betrieb entziehen - der Ping macht das sichtbar!</string>
     
     <string name="help_drive_title">☁️ Google Drive</string>
     <string name="help_drive_description">Verbinde dein Google-Konto, um KML-Dateien automatisch zu sichern.\n\nDie Dateien werden im Ordner \"TraceBack\" in deinem Google Drive gespeichert:\n• ping.kml - Letzter bekannter Standort\n• last_breath_*.kml - Notfall-Standorte\n\nKML-Dateien können mit Google Earth geöffnet werden.</string>
