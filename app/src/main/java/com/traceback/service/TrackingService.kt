@@ -25,9 +25,8 @@ import com.traceback.telegram.TelegramNotifier
 import com.traceback.ui.MainActivity
 import com.traceback.worker.PingWorker
 import kotlinx.coroutines.*
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
-import kotlin.coroutines.resume
 import java.util.*
 
 /**
@@ -181,15 +180,8 @@ class TrackingService : Service() {
         }
         
         return@withContext try {
-            suspendCancellableCoroutine { continuation ->
-                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                    .addOnSuccessListener { location ->
-                        continuation.resume(location) {}
-                    }
-                    .addOnFailureListener {
-                        continuation.resume(null) {}
-                    }
-            }
+            val task = fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            kotlinx.coroutines.tasks.await(task)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get location", e)
             null
