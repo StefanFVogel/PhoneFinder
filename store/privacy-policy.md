@@ -12,6 +12,9 @@
 
 TraceBack erfasst ausschließlich **Standortdaten (GPS)** Ihres Geräts, wenn Sie das Tracking aktivieren.
 
+**Wichtiger Hinweis zur Hintergrund-Standorterfassung:**
+Diese App erfasst Standortdaten, um die Funktionen 'Ping' und 'Last Breath' (Standortsicherung bei niedrigem Akkustand) zu ermöglichen, **auch wenn die App geschlossen ist oder nicht verwendet wird**. Die Standorterfassung erfolgt im Hintergrund, um sicherzustellen, dass Ihr letzter bekannter Standort bei kritischem Akkustand gespeichert werden kann.
+
 ### Wie werden die Daten verwendet?
 
 - **KML-Dateien**: Ihre Standortdaten werden als KML-Datei in Ihrem persönlichen Google Drive gespeichert
@@ -32,9 +35,10 @@ TraceBack erfasst ausschließlich **Standortdaten (GPS)** Ihres Geräts, wenn Si
 
 ### Berechtigungen
 
-- **Standort**: Für GPS-Tracking (nur wenn aktiviert)
+- **Standort (inkl. Hintergrund)**: Für Ping-Funktion und Last Breath - auch wenn die App geschlossen ist
 - **Internet**: Für Google Drive Sync und Telegram
-- **Vordergrund-Service**: Für kontinuierliches Tracking
+- **Vordergrund-Service**: Für Batterie-Überwachung und periodische Ping-Checks
+- **Benachrichtigungen**: Um Sie zu informieren wenn Standort gesendet wird
 
 ### Kontakt
 
@@ -47,6 +51,9 @@ Bei Fragen: [IHRE-EMAIL@example.com]
 ### What data does TraceBack collect?
 
 TraceBack only collects **location data (GPS)** from your device when tracking is enabled.
+
+**Important notice regarding background location:**
+This app collects location data to enable the 'Ping' and 'Last Breath' features (location backup at low battery), **even when the app is closed or not in use**. Location collection occurs in the background to ensure your last known location can be saved when battery is critical.
 
 ### How is the data used?
 
@@ -68,9 +75,10 @@ TraceBack only collects **location data (GPS)** from your device when tracking i
 
 ### Permissions
 
-- **Location**: For GPS tracking (only when enabled)
+- **Location (including background)**: For Ping function and Last Breath - even when app is closed
 - **Internet**: For Google Drive sync and Telegram
-- **Foreground Service**: For continuous tracking
+- **Foreground Service**: For battery monitoring and periodic ping checks
+- **Notifications**: To inform you when location is sent
 
 ### Contact
 

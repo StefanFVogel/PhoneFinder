@@ -32,6 +32,7 @@ class SecurePrefs(context: Context) {
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_ts"
         private const val KEY_STATIONARY_ANCHORS = "stationary_anchors"
         private const val KEY_LAST_BREATH_THRESHOLD = "last_breath_threshold"
+        private const val KEY_LAST_BREATH_THRESHOLDS = "last_breath_thresholds"
     }
     
     // Telegram Configuration
@@ -56,10 +57,21 @@ class SecurePrefs(context: Context) {
         get() = prefs.getBoolean(KEY_TRACKING_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_TRACKING_ENABLED, value).apply()
     
-    // Last Breath threshold (1-20%, default 5%)
+    // Last Breath threshold (1-20%, default 5%) - DEPRECATED, use lastBreathThresholds
     var lastBreathThreshold: Int
         get() = prefs.getInt(KEY_LAST_BREATH_THRESHOLD, 5)
         set(value) = prefs.edit().putInt(KEY_LAST_BREATH_THRESHOLD, value.coerceIn(1, 20)).apply()
+    
+    // Last Breath thresholds as Set (15, 8, 4, 2)
+    var lastBreathThresholds: Set<Int>
+        get() {
+            val stringSet = prefs.getStringSet(KEY_LAST_BREATH_THRESHOLDS, null)
+            return stringSet?.mapNotNull { it.toIntOrNull() }?.toSet() ?: setOf(8, 4) // Default: 8% and 4%
+        }
+        set(value) {
+            val stringSet = value.map { it.toString() }.toSet()
+            prefs.edit().putStringSet(KEY_LAST_BREATH_THRESHOLDS, stringSet).apply()
+        }
     
     // Sync Status
     var lastSyncTimestamp: Long

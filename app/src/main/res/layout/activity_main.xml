@@ -247,7 +247,7 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ==================== -->
-        <!-- 2. TRACKING -->
+        <!-- 2. PING STATUS -->
         <!-- ==================== -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -271,7 +271,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Tracking"
+                        android:text="Ping Überwachung"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
@@ -282,43 +282,21 @@
                 </LinearLayout>
 
                 <TextView
-                    android:id="@+id/text_last_sync"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Noch nicht synchronisiert"
+                    android:text="Prüft regelmäßig Berechtigungen und sendet Ping"
                     android:textColor="?android:textColorSecondary"
                     android:textSize="12sp"
                     android:layout_marginTop="4dp" />
 
-                <!-- Distance Slider -->
                 <TextView
+                    android:id="@+id/text_last_sync"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Erfassungsabstand"
-                    android:textSize="14sp"
-                    android:layout_marginTop="16dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <SeekBar
-                        android:id="@+id/seekbar_distance"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:max="39"
-                        android:progress="5" />
-
-                    <TextView
-                        android:id="@+id/text_distance"
-                        android:layout_width="60dp"
-                        android:layout_height="wrap_content"
-                        android:text="300m"
-                        android:gravity="end" />
-                </LinearLayout>
+                    android:text="Letzter Ping: -"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
+                    android:layout_marginTop="8dp" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -338,43 +316,68 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Last Breath Schwelle"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Bei älteren Akkus höher setzen"
-                    android:textColor="?android:textColorSecondary"
-                    android:textSize="12sp"
-                    android:layout_marginBottom="8dp" />
-
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <SeekBar
-                        android:id="@+id/seekbar_last_breath"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:min="1"
-                        android:max="20"
-                        android:progress="5" />
+                    <ImageView
+                        android:id="@+id/indicator_last_breath"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/indicator_red" />
 
                     <TextView
-                        android:id="@+id/text_last_breath_threshold"
-                        android:layout_width="50dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="5%"
-                        android:gravity="end"
-                        android:textStyle="bold" />
+                        android:text="Last Breath Schwellen"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="12dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Wähle mindestens 2 Schwellen für optimalen Schutz"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="12dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <CheckBox
+                        android:id="@+id/checkbox_15"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="15%"
+                        android:layout_marginEnd="8dp" />
+
+                    <CheckBox
+                        android:id="@+id/checkbox_8"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="8%"
+                        android:layout_marginEnd="8dp" />
+
+                    <CheckBox
+                        android:id="@+id/checkbox_4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="4%"
+                        android:layout_marginEnd="8dp" />
+
+                    <CheckBox
+                        android:id="@+id/checkbox_2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2%" />
                 </LinearLayout>
 
             </LinearLayout>
@@ -387,7 +390,7 @@
             android:id="@+id/button_sync_now"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Jetzt synchronisieren"
+            android:text="Ping jetzt senden"
             style="@style/Widget.Material3.Button"
             android:layout_marginBottom="8dp" />
 

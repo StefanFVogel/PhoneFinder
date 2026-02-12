@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="center"
+        android:src="@android:drawable/ic_dialog_info"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/text_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Standortberechtigung"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/text_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="TraceBack benötigt Zugriff auf Ihren Standort im Hintergrund.\n\nDies ermöglicht es der App, Ihre Position bei kritischem Akkustand zu sichern, selbst wenn Sie die App gerade nicht aktiv nutzen oder der Bildschirm ausgeschaltet ist.\n\nSie können dies jederzeit in den Einstellungen ändern."
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Welche Daten werden erhoben:"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="• GPS-Standort (Breiten- und Längengrad)\n• Zeitpunkt der Erfassung\n• Sichtbare WLAN-Netzwerke (nur bei Last Breath)"
+        android:textSize="13sp"
+        android:textColor="?android:textColorSecondary" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Wofür werden die Daten verwendet:"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="• Ping: Periodische Standort-Prüfung in Google Drive\n• Last Breath: Letzter bekannter Standort bei kritischem Akku"
+        android:textSize="13sp"
+        android:textColor="?android:textColorSecondary" />
+
+</LinearLayout>

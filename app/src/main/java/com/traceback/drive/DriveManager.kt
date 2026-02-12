@@ -195,9 +195,9 @@ class DriveManager(private val context: Context) {
     }
     
     /**
-     * Upload Last Breath KML (overwrites existing).
+     * Upload Ping KML (overwrites existing ping.kml).
      */
-    suspend fun uploadLastBreathKml(kmlContent: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun uploadPingKml(kmlContent: String): Boolean = withContext(Dispatchers.IO) {
         val service = driveService ?: run {
             Log.e(TAG, "Drive service not initialized")
             return@withContext false
@@ -209,7 +209,7 @@ class DriveManager(private val context: Context) {
         }
         
         try {
-            val fileName = "lastbreath.kml"
+            val fileName = "ping.kml"
             
             // Check if file already exists
             val existingFile = findFile(fileName, parentFolder)
@@ -231,6 +231,44 @@ class DriveManager(private val context: Context) {
                     .execute()
                 Log.i(TAG, "Created $fileName")
             }
+            
+            return@withContext true
+        } catch (e: Exception) {
+            Log.e(TAG, "Ping upload failed", e)
+            return@withContext false
+        }
+    }
+    
+    /**
+     * Upload Last Breath KML with timestamp in filename.
+     */
+    suspend fun uploadLastBreathKml(kmlContent: String): Boolean = withContext(Dispatchers.IO) {
+        val service = driveService ?: run {
+            Log.e(TAG, "Drive service not initialized")
+            return@withContext false
+        }
+        
+        val parentFolder = getOrCreateFolder() ?: run {
+            Log.e(TAG, "Failed to get folder")
+            return@withContext false
+        }
+        
+        try {
+            // Create unique filename with datetime
+            val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
+            val fileName = "last_breath_${dateTimeFormat.format(Date())}.kml"
+            
+            val content = ByteArrayContent.fromString(MIME_KML, kmlContent)
+            
+            // Always create new file (don't overwrite)
+            val metadata = DriveFile().apply {
+                name = fileName
+                parents = listOf(parentFolder)
+            }
+            service.files().create(metadata, content)
+                .setFields("id")
+                .execute()
+            Log.i(TAG, "Created $fileName")
             
             return@withContext true
         } catch (e: Exception) {

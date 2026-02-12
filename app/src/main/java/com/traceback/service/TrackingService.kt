@@ -2,6 +2,7 @@ package com.traceback.service
 
 import android.Manifest
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -13,7 +14,6 @@ import android.location.Location
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -21,13 +21,21 @@ import com.google.android.gms.location.*
 import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.drive.DriveManager
-import com.traceback.kml.KmlGenerator
 import com.traceback.telegram.TelegramNotifier
-import com.traceback.tracking.SmartTrackingManager
 import com.traceback.ui.MainActivity
-import com.traceback.worker.SyncWorker
+import com.traceback.worker.PingWorker
 import kotlinx.coroutines.*
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.text.SimpleDateFormat
+import kotlin.coroutines.resume
+import java.util.*
 
+/**
+ * TrackingService - Simplified version for Google Play compliance
+ * 
+ * Only monitors battery level and triggers Last Breath when thresholds are reached.
+ * NO continuous GPS tracking - just battery monitoring.
+ */
 class TrackingService : Service() {
     
     companion object {
@@ -45,20 +53,13 @@ class TrackingService : Service() {
     }
     
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationCallback: LocationCallback
-    private lateinit var kmlGenerator: KmlGenerator
     private lateinit var driveManager: DriveManager
     private lateinit var telegramNotifier: TelegramNotifier
-    private lateinit var smartTrackingManager: SmartTrackingManager
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    private var lastLocation: Location? = null
-    private var isMoving = false
-    private var lastSyncTime = 0L
-    private var lastStationaryLogTime = 0L
-    
-    private var lastBreathTriggered = false
+    // Track which thresholds have already triggered to avoid duplicate alerts
+    private val triggeredThresholds = mutableSetOf<Int>()
     
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -66,16 +67,7 @@ class TrackingService : Service() {
             val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
             val percentage = (level * 100 / scale.toFloat()).toInt()
             
-            val threshold = TraceBackApp.instance.securePrefs.lastBreathThreshold
-            
-            if (percentage <= threshold && !lastBreathTriggered) {
-                Log.w(TAG, "Battery critical ($percentage% <= $threshold%), triggering Last Breath")
-                lastBreathTriggered = true
-                triggerLastBreath("Akku kritisch: $percentage%")
-            } else if (percentage > threshold + 5) {
-                // Reset trigger when battery charged above threshold + buffer
-                lastBreathTriggered = false
-            }
+            checkBatteryThresholds(percentage)
         }
     }
     
@@ -83,26 +75,19 @@ class TrackingService : Service() {
         super.onCreate()
         
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        kmlGenerator = KmlGenerator(this)
         driveManager = DriveManager(this)
         telegramNotifier = TelegramNotifier(TraceBackApp.instance.securePrefs)
-        smartTrackingManager = SmartTrackingManager(this)
         
-        setupLocationCallback()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         
-        // Start activity recognition
-        smartTrackingManager.activityManager.startMonitoring()
-        
-        Log.i(TAG, "TrackingService created")
+        Log.i(TAG, "TrackingService created (battery monitor only)")
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, createNotification())
-        startLocationUpdates()
         
-        // Schedule periodic sync via WorkManager
-        SyncWorker.schedule(this)
+        // Schedule PingWorker for periodic pings
+        PingWorker.schedule(this)
         
         Log.i(TAG, "TrackingService started")
         return START_STICKY
@@ -111,186 +96,76 @@ class TrackingService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
         unregisterReceiver(batteryReceiver)
-        smartTrackingManager.activityManager.stopMonitoring()
-        
-        // Cancel periodic sync when tracking is stopped
-        SyncWorker.cancel(this)
         
         Log.i(TAG, "TrackingService destroyed")
     }
     
     override fun onBind(intent: Intent?): IBinder? = null
     
-    private fun setupLocationCallback() {
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(result: LocationResult) {
-                result.lastLocation?.let { location ->
-                    processLocation(location)
-                }
-            }
-        }
-    }
-    
-    private fun startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Location permission not granted")
+    private fun checkBatteryThresholds(currentPercentage: Int) {
+        val prefs = TraceBackApp.instance.securePrefs
+        val thresholds = prefs.lastBreathThresholds
+        
+        if (thresholds.isEmpty()) {
+            Log.d(TAG, "No thresholds configured")
             return
         }
         
-        val prefs = TraceBackApp.instance.securePrefs
-        val distanceMeters = prefs.trackingDistanceMeters.toFloat()
-        
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 30_000L)
-            .setMinUpdateDistanceMeters(distanceMeters)
-            .setWaitForAccurateLocation(true)
-            .build()
-        
-        fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
-        Log.i(TAG, "Location updates started with distance: ${distanceMeters}m")
-    }
-    
-    private fun processLocation(location: Location) {
-        val prefs = TraceBackApp.instance.securePrefs
-        
-        // Master switch check
-        if (!prefs.trackingEnabled) {
-            Log.d(TAG, "Tracking disabled, ignoring location")
-            return
-        }
-        
-        // Evaluate smart tracking mode
-        serviceScope.launch {
-            val mode = smartTrackingManager.evaluateTrackingMode()
-            
-            when (mode) {
-                SmartTrackingManager.TrackingMode.OFF -> {
-                    Log.d(TAG, "Smart tracking OFF, ignoring location")
-                    return@launch
-                }
-                
-                SmartTrackingManager.TrackingMode.STATIONARY -> {
-                    // Only log once per day in stationary mode
-                    val oneDayMs = 24 * 60 * 60 * 1000L
-                    if (System.currentTimeMillis() - lastStationaryLogTime > oneDayMs) {
-                        kmlGenerator.addPoint(location, isStopPoint = true)
-                        lastStationaryLogTime = System.currentTimeMillis()
-                        Log.i(TAG, "Logged daily stationary point")
-                    }
-                    
-                    // Check for drift
-                    val drift = smartTrackingManager.checkDrift(location)
-                    if (drift != null && drift > 500) {
-                        sendDriftAlert(drift, location)
-                    }
-                    return@launch
-                }
-                
-                SmartTrackingManager.TrackingMode.LEARNING -> {
-                    // Set learning start location and update learning
-                    smartTrackingManager.setLearningStartLocation(location)
-                    smartTrackingManager.updateLearning(location)
-                    // Still track during learning
-                }
-                
-                SmartTrackingManager.TrackingMode.ACTIVE -> {
-                    // Normal active tracking
-                }
+        // Check each threshold
+        for (threshold in thresholds.sortedDescending()) {
+            if (currentPercentage <= threshold && !triggeredThresholds.contains(threshold)) {
+                Log.w(TAG, "Battery at $currentPercentage%, threshold $threshold% reached!")
+                triggeredThresholds.add(threshold)
+                triggerLastBreath("Akku kritisch: $currentPercentage% (Schwelle: $threshold%)")
+                break // Only trigger one at a time
             }
-            
-            // Active tracking logic
-            val lastLoc = lastLocation
-            if (lastLoc != null) {
-                val distance = location.distanceTo(lastLoc)
-                val timeDelta = location.time - lastLoc.time
-                val speed = if (timeDelta > 0) distance / (timeDelta / 1000f) else 0f
-                
-                // Check if transitioning from moving to still
-                if (isMoving && !smartTrackingManager.activityManager.isMoving()) {
-                    // Log stop point
-                    logStopPoint(location)
-                    isMoving = false
-                }
-                
-                // Log if actually moving
-                if (speed > 1f || distance > prefs.trackingDistanceMeters) {
-                    isMoving = true
-                    kmlGenerator.addPoint(location)
-                    Log.d(TAG, "Logged moving point: ${location.latitude}, ${location.longitude}")
-                }
-            } else {
-                // First location - always log initial position
-                kmlGenerator.addPoint(location, isStopPoint = true)
-                Log.i(TAG, "Logged initial position: ${location.latitude}, ${location.longitude}")
-            }
-            
-            lastLocation = location
-        }
-    }
-    
-    private suspend fun sendDriftAlert(drift: Float, location: Location) {
-        val message = buildString {
-            appendLine("⚠️ TraceBack Drift-Warnung")
-            appendLine()
-            appendLine("Das Gerät hat sich ${drift.toInt()}m von der erwarteten Position bewegt,")
-            appendLine("obwohl es mit einem stationären Netzwerk verbunden ist.")
-            appendLine()
-            appendLine("📍 Aktuelle Position:")
-            appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
         }
         
-        telegramNotifier.sendEmergency(message)
-        Log.w(TAG, "Drift alert sent: ${drift}m")
-    }
-    
-    private fun logStopPoint(location: Location) {
-        // Request high-precision fix for stop point
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            == PackageManager.PERMISSION_GRANTED) {
-            
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                .addOnSuccessListener { preciseLocation ->
-                    val loc = preciseLocation ?: location
-                    kmlGenerator.addPoint(loc, isStopPoint = true)
-                    Log.i(TAG, "Logged stop point: ${loc.latitude}, ${loc.longitude}")
-                }
+        // Reset triggers when battery is charged above highest configured threshold + 5%
+        val highestThreshold = thresholds.maxOrNull() ?: 15
+        if (currentPercentage > highestThreshold + 5) {
+            if (triggeredThresholds.isNotEmpty()) {
+                Log.i(TAG, "Battery charged above ${highestThreshold + 5}%, resetting triggers")
+                triggeredThresholds.clear()
+            }
         }
     }
     
-    fun triggerLastBreath(reason: String) {
+    private fun triggerLastBreath(reason: String) {
         serviceScope.launch {
             try {
-                val location = lastLocation
+                val location = getCurrentLocation()
                 val wifiList = scanWifiNetworks()
                 val prefs = TraceBackApp.instance.securePrefs
                 
                 val message = buildLastBreathMessage(reason, location, wifiList)
                 
-                // Track results
                 var driveSuccess = false
                 var telegramSuccess = false
                 var smsSuccess = false
                 
-                // 1. Google Drive - always try if connected
+                // 1. Google Drive
                 if (location != null && driveManager.isReady()) {
-                    val kmlContent = generateLastBreathKml(location)
+                    val kmlContent = generateLastBreathKml(location, reason)
                     driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
                     Log.i(TAG, "Last Breath → Drive: ${if (driveSuccess) "✓" else "✗"}")
                 }
                 
-                // 2. Telegram - if configured
+                // 2. Telegram
                 if (!prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()) {
                     telegramSuccess = telegramNotifier.sendEmergency(message)
                     Log.i(TAG, "Last Breath → Telegram: ${if (telegramSuccess) "✓" else "✗"}")
                 }
                 
-                // 3. SMS - if configured (independent of Telegram)
+                // 3. SMS
                 if (!prefs.emergencySmsNumber.isNullOrBlank()) {
-                    smsSuccess = sendEmergencySmsWithResult(message)
+                    smsSuccess = sendEmergencySms(message)
                     Log.i(TAG, "Last Breath → SMS: ${if (smsSuccess) "✓" else "✗"}")
                 }
+                
+                // Show notification to user
+                showLocationSentNotification(reason, location, driveSuccess || telegramSuccess || smsSuccess)
                 
                 Log.i(TAG, "Last Breath complete: $reason (Drive=$driveSuccess, Telegram=$telegramSuccess, SMS=$smsSuccess)")
             } catch (e: Exception) {
@@ -299,18 +174,40 @@ class TrackingService : Service() {
         }
     }
     
-    private fun generateLastBreathKml(location: Location): String {
-        val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }.format(java.util.Date())
+    private suspend fun getCurrentLocation(): Location? = withContext(Dispatchers.IO) {
+        if (ActivityCompat.checkSelfPermission(this@TrackingService, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            return@withContext null
+        }
         
-        val dateStr = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+        return@withContext try {
+            suspendCancellableCoroutine { continuation ->
+                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                    .addOnSuccessListener { location ->
+                        continuation.resume(location) {}
+                    }
+                    .addOnFailureListener {
+                        continuation.resume(null) {}
+                    }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get location", e)
+            null
+        }
+    }
+    
+    private fun generateLastBreathKml(location: Location, reason: String): String {
+        val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
+        
+        val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         
         return """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
 <name>TraceBack Last Breath</name>
-<description>Letzter bekannter Standort - $dateStr</description>
+<description>$reason - $dateStr</description>
 <Style id="lastBreathStyle">
     <IconStyle>
         <color>ff0000ff</color>
@@ -320,7 +217,9 @@ class TrackingService : Service() {
 </Style>
 <Placemark>
 <name>🚨 Last Breath</name>
-<description>Genauigkeit: ${location.accuracy}m</description>
+<description>$reason
+Genauigkeit: ${location.accuracy}m
+Zeit: $dateStr</description>
 <styleUrl>#lastBreathStyle</styleUrl>
 <TimeStamp><when>$timestamp</when></TimeStamp>
 <Point>
@@ -340,8 +239,8 @@ class TrackingService : Service() {
                 appendLine("📍 Letzter Standort:")
                 appendLine("Lat: ${location.latitude}")
                 appendLine("Lon: ${location.longitude}")
-                appendLine("Genauigkeit: ${location.accuracy}m")
-                appendLine("https://maps.google.com/?q=${location.latitude},${location.longitude}")
+                appendLine()
+                appendLine("🗺️ https://maps.google.com/maps?q=${location.latitude},${location.longitude}")
             } else {
                 appendLine("⚠️ Kein Standort verfügbar")
             }
@@ -354,18 +253,21 @@ class TrackingService : Service() {
     }
     
     private fun scanWifiNetworks(): List<String> {
-        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        return wifiManager.scanResults
-            .sortedByDescending { it.level }
-            .map { it.SSID }
-            .filter { it.isNotBlank() }
+        return try {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            wifiManager.scanResults
+                .sortedByDescending { it.level }
+                .map { it.SSID }
+                .filter { it.isNotBlank() }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
     
-    private fun sendEmergencySmsWithResult(message: String): Boolean {
+    private fun sendEmergencySms(message: String): Boolean {
         val number = TraceBackApp.instance.securePrefs.emergencySmsNumber ?: return false
         
-        // Check SMS permission
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) 
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
             != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "SMS permission not granted")
             return false
@@ -383,16 +285,38 @@ class TrackingService : Service() {
         }
     }
     
+    private fun showLocationSentNotification(reason: String, location: Location?, success: Boolean) {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        
+        val title = if (success) "📍 Last Breath gesendet" else "⚠️ Last Breath fehlgeschlagen"
+        val message = if (location != null) {
+            "$reason\nStandort: ${String.format("%.4f", location.latitude)}, ${String.format("%.4f", location.longitude)}"
+        } else {
+            "$reason\nKein Standort verfügbar"
+        }
+        
+        val notification = NotificationCompat.Builder(this, TraceBackApp.CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_tracking)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        
+        notificationManager.notify(3, notification)
+    }
+    
     private fun createNotification(): Notification {
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent, 
+            this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
         return NotificationCompat.Builder(this, TraceBackApp.CHANNEL_TRACKING)
             .setContentTitle("TraceBack aktiv")
-            .setContentText("Standort wird aufgezeichnet")
+            .setContentText("Überwacht Akkustand für Last Breath")
             .setSmallIcon(R.drawable.ic_tracking)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
