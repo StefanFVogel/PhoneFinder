@@ -1,5 +1,14 @@
 # TraceBack Changelog
 
+## v1.3.3 (versionCode 7) - 2026-02-12
+
+### Neue Features
+- **Geschwindigkeit + Richtung**: Zeigt Geschwindigkeit (wenn > 2 km/h) und Fahrtrichtung (N, NO, O, SO, S, SW, W, NW)
+- Erscheint nur bei Bewegung um Rauschen bei Stillstand zu vermeiden
+- Funktioniert in Telegram, SMS und HTML-Ansicht
+
+---
+
 ## v1.3.2 (versionCode 6) - 2026-02-12
 
 ### Neue Features

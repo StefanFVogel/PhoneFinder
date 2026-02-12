@@ -159,6 +159,17 @@ object LastBreathSender {
                 appendLine("Lat: ${location.latitude}")
                 appendLine("Lon: ${location.longitude}")
                 appendLine("Genauigkeit: ${location.accuracy.toInt()}m")
+                
+                // Speed & bearing only if moving (> 2 km/h = 0.556 m/s)
+                if (location.hasSpeed() && location.speed > 0.556f) {
+                    val speedKmh = (location.speed * 3.6).toInt()
+                    append("🚗 Geschwindigkeit: ${speedKmh} km/h")
+                    if (location.hasBearing()) {
+                        append(" • ${bearingToDirection(location.bearing)}")
+                    }
+                    appendLine()
+                }
+                
                 appendLine()
                 appendLine("🗺️ https://maps.google.com/maps?q=${location.latitude},${location.longitude}")
             } else {
@@ -177,6 +188,15 @@ object LastBreathSender {
             appendLine()
             appendLine("Zeit: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
         }
+    }
+    
+    /**
+     * Convert bearing (0-360°) to compass direction
+     */
+    private fun bearingToDirection(bearing: Float): String {
+        val directions = arrayOf("N", "NO", "O", "SO", "S", "SW", "W", "NW")
+        val index = ((bearing + 22.5) / 45).toInt() % 8
+        return directions[index]
     }
     
     private fun generateKml(location: Location?, reason: String, wifiNetworks: List<String>, isTest: Boolean): String {
@@ -248,6 +268,13 @@ Zeit: $dateStr$wifiInfo</description>
             val googleMapsUrl = "https://www.google.com/maps?q=$lat,$lon"
             val osmUrl = "https://www.openstreetmap.org/?mlat=$lat&mlon=$lon&zoom=15"
             
+            // Speed & bearing only if moving (> 2 km/h)
+            val speedHtml = if (location.hasSpeed() && location.speed > 0.556f) {
+                val speedKmh = (location.speed * 3.6).toInt()
+                val direction = if (location.hasBearing()) " • ${bearingToDirection(location.bearing)}" else ""
+                """<div class="speed">🚗 Geschwindigkeit: ${speedKmh} km/h$direction</div>"""
+            } else ""
+            
             """<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -262,6 +289,7 @@ Zeit: $dateStr$wifiInfo</description>
         .time { color: #666; margin-bottom: 20px; }
         .coords { font-family: monospace; background: #f0f0f0; padding: 10px; border-radius: 8px; margin: 15px 0; }
         .accuracy { color: #888; font-size: 14px; }
+        .speed { color: #1976d2; font-size: 14px; margin-top: 8px; }
         .map { width: 100%; height: 300px; border: none; border-radius: 8px; margin: 15px 0; }
         .links { display: flex; gap: 10px; flex-wrap: wrap; }
         .links a { flex: 1; text-align: center; padding: 12px; background: #4285f4; color: white; text-decoration: none; border-radius: 8px; min-width: 120px; }
@@ -284,6 +312,7 @@ Zeit: $dateStr$wifiInfo</description>
             Lon: $lon
         </div>
         <div class="accuracy">📏 Genauigkeit: ${acc}m</div>
+        $speedHtml
         <iframe class="map" src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01},${lat-0.01},${lon+0.01},${lat+0.01}&layer=mapnik&marker=$lat,$lon"></iframe>
         <div class="links">
             <a href="$googleMapsUrl" target="_blank">🗺️ Google Maps</a>
