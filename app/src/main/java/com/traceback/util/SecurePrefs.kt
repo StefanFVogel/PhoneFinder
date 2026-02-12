@@ -30,7 +30,6 @@ class SecurePrefs(context: Context) {
         private const val KEY_TRACKING_DISTANCE_METERS = "tracking_distance_m"
         private const val KEY_TRACKING_ENABLED = "tracking_enabled"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_ts"
-        private const val KEY_STATIONARY_ANCHORS = "stationary_anchors"
         private const val KEY_LAST_BREATH_THRESHOLD = "last_breath_threshold"
         private const val KEY_LAST_BREATH_THRESHOLDS = "last_breath_thresholds"
     }
@@ -77,19 +76,6 @@ class SecurePrefs(context: Context) {
     var lastSyncTimestamp: Long
         get() = prefs.getLong(KEY_LAST_SYNC_TIMESTAMP, 0)
         set(value) = prefs.edit().putLong(KEY_LAST_SYNC_TIMESTAMP, value).apply()
-    
-    // Stationary Anchors (JSON-encoded Set of SSID/MAC)
-    var stationaryAnchors: Set<String>
-        get() = prefs.getStringSet(KEY_STATIONARY_ANCHORS, emptySet()) ?: emptySet()
-        set(value) = prefs.edit().putStringSet(KEY_STATIONARY_ANCHORS, value).apply()
-    
-    fun addStationaryAnchor(anchor: String) {
-        stationaryAnchors = stationaryAnchors + anchor
-    }
-    
-    fun removeStationaryAnchor(anchor: String) {
-        stationaryAnchors = stationaryAnchors - anchor
-    }
     
     fun isConfiguredForEmergency(): Boolean {
         return !telegramBotToken.isNullOrBlank() && !telegramChatId.isNullOrBlank()
