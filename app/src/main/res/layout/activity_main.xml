@@ -409,19 +409,11 @@
         <!-- 4. AKTIONEN -->
         <!-- ==================== -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_sync_now"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Ping jetzt senden"
-            style="@style/Widget.Material3.Button"
-            android:layout_marginBottom="8dp" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/button_test_last_breath"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Last Breath testen"
-            style="@style/Widget.Material3.Button.TonalButton" />
+            android:text="🚨 Last Breath testen"
+            style="@style/Widget.Material3.Button" />
 
     </LinearLayout>
 </ScrollView>

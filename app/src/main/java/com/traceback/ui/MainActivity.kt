@@ -196,10 +196,6 @@ class MainActivity : AppCompatActivity() {
         
         // === ACTION BUTTONS ===
         
-        binding.buttonSyncNow.setOnClickListener {
-            sendPingNow()
-        }
-        
         binding.buttonTestLastBreath.setOnClickListener {
             testLastBreath()
         }
@@ -573,88 +569,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, "✓ Akku-Optimierung bereits deaktiviert", Toast.LENGTH_SHORT).show()
         }
-    }
-    
-    private fun sendPingNow() {
-        if (!driveManager.isReady()) {
-            Toast.makeText(this, "Bitte zuerst mit Google Drive verbinden", Toast.LENGTH_SHORT).show()
-            signInToGoogle()
-            return
-        }
-        
-        Toast.makeText(this, "Sende Ping...", Toast.LENGTH_SHORT).show()
-        
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
-            != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "GPS-Berechtigung fehlt", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(this)
-        fusedLocationClient.getCurrentLocation(
-            com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
-            null
-        ).addOnSuccessListener { location ->
-            lifecycleScope.launch {
-                val success = uploadPing(location)
-                runOnUiThread {
-                    if (success) {
-                        showLocationSentNotification("Ping", location)
-                        TraceBackApp.instance.securePrefs.lastSyncTimestamp = System.currentTimeMillis()
-                        updateStatusIndicators()
-                        Toast.makeText(this@MainActivity, "✓ Ping gesendet", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@MainActivity, "Ping fehlgeschlagen", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }.addOnFailureListener {
-            Toast.makeText(this, "Standort nicht verfügbar", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private suspend fun uploadPing(location: Location?): Boolean {
-        val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }.format(Date())
-        
-        val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        
-        val kmlContent = if (location != null) {
-            """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-<name>TraceBack Ping</name>
-<description>Letzter Ping - $dateStr</description>
-<Style id="pingStyle">
-    <IconStyle>
-        <color>ff00ff00</color>
-        <scale>1.0</scale>
-        <Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon>
-    </IconStyle>
-</Style>
-<Placemark>
-<name>📍 Ping</name>
-<description>$dateStr</description>
-<styleUrl>#pingStyle</styleUrl>
-<TimeStamp><when>$timestamp</when></TimeStamp>
-<Point>
-<coordinates>${location.longitude},${location.latitude},${location.altitude}</coordinates>
-</Point>
-</Placemark>
-</Document>
-</kml>"""
-        } else {
-            """<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-<name>TraceBack Ping</name>
-<description>Ping ohne Standort - $dateStr</description>
-</Document>
-</kml>"""
-        }
-        
-        return driveManager.uploadPingKml(kmlContent)
     }
     
     private fun testLastBreath() {
