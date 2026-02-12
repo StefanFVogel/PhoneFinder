@@ -71,8 +71,12 @@ class MainActivity : AppCompatActivity() {
             driveManager.initialize(account)
             updateStatusIndicators()
             Toast.makeText(this, "Mit Google Drive verbunden", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener {
-            Toast.makeText(this, "Google Sign-In fehlgeschlagen", Toast.LENGTH_SHORT).show()
+            showFeatureNotification(
+                "☁️ Google Drive verbunden",
+                "KML-Dateien werden im Ordner 'TraceBack' in deinem Google Drive gespeichert:\n• ping.kml - Letzter Ping\n• last_breath_*.kml - Notfall-Standorte"
+            )
+        }.addOnFailureListener { e ->
+            Toast.makeText(this, "Google Sign-In fehlgeschlagen: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
     
@@ -149,6 +153,10 @@ class MainActivity : AppCompatActivity() {
             if (isChecked) {
                 PingWorker.schedule(this)
                 Toast.makeText(this, "Ping-Überwachung aktiviert", Toast.LENGTH_SHORT).show()
+                showFeatureNotification(
+                    "📡 Ping-Überwachung aktiviert",
+                    "TraceBack prüft periodisch deinen Standort und speichert ping.kml in Google Drive.\n\nDer Ping zeigt, dass die App noch funktioniert."
+                )
             } else {
                 PingWorker.cancel(this)
                 Toast.makeText(this, "Ping-Überwachung deaktiviert", Toast.LENGTH_SHORT).show()
@@ -167,6 +175,7 @@ class MainActivity : AppCompatActivity() {
         val checkboxListener = { _: android.widget.CompoundButton, _: Boolean ->
             saveThresholds()
             updateLastBreathIndicator()
+            showThresholdNotification()
         }
         
         binding.checkbox15.setOnCheckedChangeListener(checkboxListener)
@@ -200,19 +209,35 @@ class MainActivity : AppCompatActivity() {
         TraceBackApp.instance.securePrefs.lastBreathThresholds = thresholds
     }
     
+    private fun showThresholdNotification() {
+        val thresholds = TraceBackApp.instance.securePrefs.lastBreathThresholds
+        if (thresholds.isEmpty()) {
+            showFeatureNotification(
+                "🚨 Last Breath deaktiviert",
+                "Keine Schwellen ausgewählt. Bei kritischem Akku wird KEIN Standort gesendet!"
+            )
+        } else {
+            val sorted = thresholds.sortedDescending()
+            showFeatureNotification(
+                "🚨 Last Breath Schwellen: ${sorted.joinToString(", ")}%",
+                "Bei Akkustand unter ${sorted.joinToString("%, ")}% wird dein Standort automatisch gesichert."
+            )
+        }
+    }
+    
     private fun updateLastBreathIndicator() {
-        val count = listOf(
-            binding.checkbox15.isChecked,
-            binding.checkbox8.isChecked,
-            binding.checkbox4.isChecked,
-            binding.checkbox2.isChecked
-        ).count { it }
+        val has15 = binding.checkbox15.isChecked
+        val has8 = binding.checkbox8.isChecked
+        val has4 = binding.checkbox4.isChecked
+        val has2 = binding.checkbox2.isChecked
+        val count = listOf(has15, has8, has4, has2).count { it }
         
+        // Logic: 0 = Red, only 2% = Yellow, otherwise Green
         binding.indicatorLastBreath.setImageResource(
             when {
-                count >= 2 -> R.drawable.indicator_green
-                count == 1 -> R.drawable.indicator_yellow
-                else -> R.drawable.indicator_red
+                count == 0 -> R.drawable.indicator_red
+                count == 1 && has2 && !has15 && !has8 && !has4 -> R.drawable.indicator_yellow
+                else -> R.drawable.indicator_green
             }
         )
     }
@@ -377,7 +402,16 @@ class MainActivity : AppCompatActivity() {
                 prefs.telegramChatId = if (chatId.isNullOrBlank()) null else chatId
                 
                 updateStatusIndicators()
-                Toast.makeText(this, "Telegram-Konfiguration gespeichert", Toast.LENGTH_SHORT).show()
+                
+                if (!botToken.isNullOrBlank() && !chatId.isNullOrBlank()) {
+                    Toast.makeText(this, "Telegram-Konfiguration gespeichert ✓", Toast.LENGTH_SHORT).show()
+                    showFeatureNotification(
+                        "📱 Telegram Bot konfiguriert",
+                        "Last Breath Standorte werden an Chat-ID $chatId gesendet.\n\nTipp: Teste mit 'Last Breath testen' ob alles funktioniert."
+                    )
+                } else {
+                    Toast.makeText(this, "Telegram-Konfiguration entfernt", Toast.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Abbrechen", null)
             .show()
@@ -402,15 +436,19 @@ class MainActivity : AppCompatActivity() {
                 prefs.emergencySmsNumber = if (number.isNullOrBlank()) null else number
                 updateStatusIndicators()
                 
-                if (!number.isNullOrBlank() && 
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
-                    Toast.makeText(this, "SMS-Nummer gespeichert - bitte SMS-Berechtigung erteilen", Toast.LENGTH_LONG).show()
+                if (!number.isNullOrBlank()) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
+                        Toast.makeText(this, "SMS-Nummer gespeichert - bitte SMS-Berechtigung erteilen", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "SMS-Nummer gespeichert ✓", Toast.LENGTH_SHORT).show()
+                    }
+                    showFeatureNotification(
+                        "📱 Notfall-SMS konfiguriert",
+                        "Last Breath Standorte werden per SMS an $number gesendet.\n\nFunktioniert auch ohne Internet!"
+                    )
                 } else {
-                    Toast.makeText(this, 
-                        if (number.isNullOrBlank()) "SMS-Nummer entfernt" else "SMS-Nummer gespeichert ✓",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(this, "SMS-Nummer entfernt", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Abbrechen", null)
@@ -709,6 +747,24 @@ class MainActivity : AppCompatActivity() {
             .setSmallIcon(R.drawable.ic_tracking)
             .setContentTitle("📍 TraceBack")
             .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+        
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+    
+    /**
+     * Show notification when a feature is enabled/configured
+     */
+    private fun showFeatureNotification(title: String, message: String) {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        
+        val notification = NotificationCompat.Builder(this, TraceBackApp.CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_tracking)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()

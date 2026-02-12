@@ -61,9 +61,9 @@ class DriveManager(private val context: Context) {
     fun isReady(): Boolean {
         if (driveService != null) return true
         
-        // Try to auto-initialize from last signed-in account
+        // Try to auto-initialize from last signed-in account WITH Drive scope
         val account = GoogleSignIn.getLastSignedInAccount(context)
-        if (account != null) {
+        if (account != null && GoogleSignIn.hasPermissions(account, com.google.android.gms.common.api.Scope(DriveScopes.DRIVE_FILE))) {
             initialize(account)
             return true
         }

@@ -66,7 +66,7 @@ class SecurePrefs(context: Context) {
     var lastBreathThresholds: Set<Int>
         get() {
             val stringSet = prefs.getStringSet(KEY_LAST_BREATH_THRESHOLDS, null)
-            return stringSet?.mapNotNull { it.toIntOrNull() }?.toSet() ?: setOf(8, 4) // Default: 8% and 4%
+            return stringSet?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet() // Default: none selected
         }
         set(value) {
             val stringSet = value.map { it.toString() }.toSet()
