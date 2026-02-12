@@ -27,6 +27,7 @@ class DriveManager(private val context: Context) {
         private const val APP_NAME = "TraceBack"
         private const val FOLDER_NAME = "TraceBack"
         private const val MIME_KML = "application/vnd.google-earth.kml+xml"
+        private const val MIME_HTML = "text/html"
         private const val MIME_FOLDER = "application/vnd.google-apps.folder"
         private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     }
@@ -191,6 +192,49 @@ class DriveManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to list files", e)
             return@withContext emptyList()
+        }
+    }
+    
+    /**
+     * Upload HTML file (overwrites existing).
+     */
+    suspend fun uploadHtml(htmlContent: String, fileName: String): Boolean = withContext(Dispatchers.IO) {
+        val service = driveService ?: run {
+            Log.e(TAG, "Drive service not initialized")
+            return@withContext false
+        }
+        
+        val parentFolder = getOrCreateFolder() ?: run {
+            Log.e(TAG, "Failed to get folder")
+            return@withContext false
+        }
+        
+        try {
+            // Check if file already exists
+            val existingFile = findFile(fileName, parentFolder)
+            
+            val content = ByteArrayContent.fromString(MIME_HTML, htmlContent)
+            
+            if (existingFile != null) {
+                // Update existing file
+                service.files().update(existingFile.id, null, content).execute()
+                Log.i(TAG, "Updated $fileName")
+            } else {
+                // Create new file
+                val metadata = DriveFile().apply {
+                    name = fileName
+                    parents = listOf(parentFolder)
+                }
+                service.files().create(metadata, content)
+                    .setFields("id")
+                    .execute()
+                Log.i(TAG, "Created $fileName")
+            }
+            
+            return@withContext true
+        } catch (e: Exception) {
+            Log.e(TAG, "HTML upload failed", e)
+            return@withContext false
         }
     }
     

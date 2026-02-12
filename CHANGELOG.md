@@ -1,5 +1,16 @@
 # TraceBack Changelog
 
+## v1.3.2 (versionCode 6) - 2026-02-12
+
+### Neue Features
+- **HTML-Ansicht in Drive**: Neben KML wird jetzt auch HTML mit eingebetteter Karte gespeichert
+  - `ping.html` - Aktuelle Position mit OpenStreetMap-Karte
+  - `last_breath_*.html` - Notfall-Standort mit Karte und WLAN-Liste
+  - Gleiche Ansicht wie bei Telegram: Karte + Links zu Google Maps & OpenStreetMap
+- WLAN-Netzwerke werden jetzt auch in KML-Dateien gespeichert
+
+---
+
 ## v1.3.1 (versionCode 5) - 2026-02-12
 
 ### Neue Features

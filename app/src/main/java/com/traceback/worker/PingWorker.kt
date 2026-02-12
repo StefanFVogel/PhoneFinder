@@ -101,12 +101,13 @@ class PingWorker(
         // 3. Send to ALL configured channels
         var anySuccess = false
         
-        // Drive
+        // Drive (KML + HTML)
         val driveManager = DriveManager(applicationContext)
         if (driveManager.isReady()) {
-            val driveSuccess = uploadPingToDrive(driveManager, location)
-            if (driveSuccess) {
-                Log.i(TAG, "Ping to Drive: OK")
+            val kmlSuccess = uploadPingToDrive(driveManager, location)
+            val htmlSuccess = uploadPingHtml(driveManager, location)
+            if (kmlSuccess || htmlSuccess) {
+                Log.i(TAG, "Ping to Drive: KML=$kmlSuccess, HTML=$htmlSuccess")
                 anySuccess = true
             } else {
                 Log.w(TAG, "Ping to Drive: FAILED")
@@ -231,6 +232,82 @@ class PingWorker(
         }
         
         return driveManager.uploadPingKml(kmlContent)
+    }
+    
+    private suspend fun uploadPingHtml(driveManager: DriveManager, location: Location?): Boolean {
+        val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        
+        val htmlContent = if (location != null) {
+            val lat = location.latitude
+            val lon = location.longitude
+            val acc = location.accuracy.toInt()
+            val googleMapsUrl = "https://www.google.com/maps?q=$lat,$lon"
+            val osmUrl = "https://www.openstreetmap.org/?mlat=$lat&mlon=$lon&zoom=15"
+            
+            """<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TraceBack Ping - $dateStr</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 12px; padding: 20px; max-width: 500px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 10px 0; font-size: 24px; }
+        .time { color: #666; margin-bottom: 20px; }
+        .coords { font-family: monospace; background: #f0f0f0; padding: 10px; border-radius: 8px; margin: 15px 0; }
+        .accuracy { color: #888; font-size: 14px; }
+        .map { width: 100%; height: 300px; border: none; border-radius: 8px; margin: 15px 0; }
+        .links { display: flex; gap: 10px; flex-wrap: wrap; }
+        .links a { flex: 1; text-align: center; padding: 12px; background: #4285f4; color: white; text-decoration: none; border-radius: 8px; min-width: 120px; }
+        .links a:hover { background: #3367d6; }
+        .links a.osm { background: #7ebc6f; }
+        .links a.osm:hover { background: #6aa85c; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📡 TraceBack Ping</h1>
+        <div class="time">📍 $dateStr</div>
+        <div class="coords">
+            Lat: $lat<br>
+            Lon: $lon
+        </div>
+        <div class="accuracy">📏 Genauigkeit: ${acc}m</div>
+        <iframe class="map" src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01},${lat-0.01},${lon+0.01},${lat+0.01}&layer=mapnik&marker=$lat,$lon"></iframe>
+        <div class="links">
+            <a href="$googleMapsUrl" target="_blank">🗺️ Google Maps</a>
+            <a href="$osmUrl" target="_blank" class="osm">🗺️ OpenStreetMap</a>
+        </div>
+    </div>
+</body>
+</html>"""
+        } else {
+            """<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TraceBack Ping - $dateStr</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 12px; padding: 20px; max-width: 500px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 10px 0; font-size: 24px; }
+        .time { color: #666; margin-bottom: 20px; }
+        .warning { background: #fff3cd; padding: 15px; border-radius: 8px; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>📡 TraceBack Ping</h1>
+        <div class="time">⚠️ $dateStr</div>
+        <div class="warning">Standort konnte nicht ermittelt werden</div>
+    </div>
+</body>
+</html>"""
+        }
+        
+        return driveManager.uploadHtml(htmlContent, "ping.html")
     }
     
     private suspend fun sendPingToTelegram(notifier: TelegramNotifier, location: Location?): Boolean {

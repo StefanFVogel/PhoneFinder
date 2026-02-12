@@ -21,7 +21,12 @@ Bei **JEDEM Commit** mit Feature-Änderungen diese Punkte prüfen:
 
 ---
 
-## Aktuelle Version: 1.3.1 (versionCode 5)
+## Aktuelle Version: 1.3.2 (versionCode 6)
+
+### Änderungen in 1.3.2
+- HTML-Ansicht in Drive (ping.html, last_breath_*.html) mit eingebetteter Karte
+- Gleiche Ansicht wie Telegram: Karte + Links zu Google Maps & OpenStreetMap
+- WLANs werden auch in KML gespeichert
 
 ### Änderungen in 1.3.1
 - Ping sendet jetzt an ALLE konfigurierten Kanäle (Drive + Telegram)

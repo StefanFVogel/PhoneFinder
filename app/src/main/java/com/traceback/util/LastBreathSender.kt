@@ -63,11 +63,16 @@ object LastBreathSender {
         var telegramSuccess = false
         var smsSuccess = false
         
-        // 4. Upload to Google Drive
-        if (location != null && driveManager.isReady()) {
-            val kmlContent = generateKml(location, reason, isTest)
-            driveSuccess = driveManager.uploadLastBreathKml(kmlContent)
-            Log.i(TAG, "Drive upload: ${if (driveSuccess) "✓" else "✗"}")
+        // 4. Upload to Google Drive (KML + HTML)
+        if (driveManager.isReady()) {
+            val kmlContent = generateKml(location, reason, wifiNetworks, isTest)
+            val htmlContent = generateHtml(location, reason, wifiNetworks, isTest)
+            val dateTimeFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
+            val timestamp = dateTimeFormat.format(Date())
+            val kmlSuccess = driveManager.uploadLastBreathKml(kmlContent)
+            val htmlSuccess = driveManager.uploadHtml(htmlContent, "last_breath_$timestamp.html")
+            driveSuccess = kmlSuccess || htmlSuccess
+            Log.i(TAG, "Drive upload: KML=${if (kmlSuccess) "✓" else "✗"}, HTML=${if (htmlSuccess) "✓" else "✗"}")
         }
         
         // 5. Send Telegram
@@ -174,19 +179,21 @@ object LastBreathSender {
         }
     }
     
-    private fun generateKml(location: Location, reason: String, isTest: Boolean): String {
+    private fun generateKml(location: Location?, reason: String, wifiNetworks: List<String>, isTest: Boolean): String {
         val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date())
         
         val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         val title = if (isTest) "🧪 Last Breath TEST" else "🚨 Last Breath"
+        val wifiInfo = if (wifiNetworks.isNotEmpty()) "\nWLANs: ${wifiNetworks.take(3).joinToString(", ")}" else ""
         
-        return """<?xml version="1.0" encoding="UTF-8"?>
+        return if (location != null) {
+            """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
 <name>TraceBack Last Breath${if (isTest) " (TEST)" else ""}</name>
-<description>$reason - $dateStr</description>
+<description>$reason - $dateStr$wifiInfo</description>
 <Style id="lastBreathStyle">
     <IconStyle>
         <color>${if (isTest) "ff00ff00" else "ff0000ff"}</color>
@@ -198,7 +205,7 @@ object LastBreathSender {
 <name>$title</name>
 <description>$reason
 Genauigkeit: ${location.accuracy}m
-Zeit: $dateStr</description>
+Zeit: $dateStr$wifiInfo</description>
 <styleUrl>#lastBreathStyle</styleUrl>
 <TimeStamp><when>$timestamp</when></TimeStamp>
 <Point>
@@ -207,6 +214,114 @@ Zeit: $dateStr</description>
 </Placemark>
 </Document>
 </kml>"""
+        } else {
+            """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<name>TraceBack Last Breath${if (isTest) " (TEST)" else ""}</name>
+<description>$reason - $dateStr (Kein GPS)$wifiInfo</description>
+</Document>
+</kml>"""
+        }
+    }
+    
+    private fun generateHtml(location: Location?, reason: String, wifiNetworks: List<String>, isTest: Boolean): String {
+        val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        val title = if (isTest) "🧪 Last Breath TEST" else "🚨 Last Breath"
+        val headerColor = if (isTest) "#4caf50" else "#f44336"
+        
+        val wifiHtml = if (wifiNetworks.isNotEmpty()) {
+            """
+        <div class="wifi">
+            <h3>📶 Sichtbare WLANs (${wifiNetworks.size})</h3>
+            <ul>
+                ${wifiNetworks.take(10).joinToString("\n") { "<li>$it</li>" }}
+                ${if (wifiNetworks.size > 10) "<li>... und ${wifiNetworks.size - 10} weitere</li>" else ""}
+            </ul>
+        </div>"""
+        } else ""
+        
+        return if (location != null) {
+            val lat = location.latitude
+            val lon = location.longitude
+            val acc = location.accuracy.toInt()
+            val googleMapsUrl = "https://www.google.com/maps?q=$lat,$lon"
+            val osmUrl = "https://www.openstreetmap.org/?mlat=$lat&mlon=$lon&zoom=15"
+            
+            """<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TraceBack Last Breath - $dateStr</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 12px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 5px 0; font-size: 24px; color: $headerColor; }
+        .reason { background: ${if (isTest) "#e8f5e9" else "#ffebee"}; padding: 10px 15px; border-radius: 8px; margin: 10px 0; color: ${if (isTest) "#2e7d32" else "#c62828"}; }
+        .time { color: #666; margin-bottom: 20px; }
+        .coords { font-family: monospace; background: #f0f0f0; padding: 10px; border-radius: 8px; margin: 15px 0; }
+        .accuracy { color: #888; font-size: 14px; }
+        .map { width: 100%; height: 300px; border: none; border-radius: 8px; margin: 15px 0; }
+        .links { display: flex; gap: 10px; flex-wrap: wrap; }
+        .links a { flex: 1; text-align: center; padding: 12px; background: #4285f4; color: white; text-decoration: none; border-radius: 8px; min-width: 120px; }
+        .links a:hover { background: #3367d6; }
+        .links a.osm { background: #7ebc6f; }
+        .links a.osm:hover { background: #6aa85c; }
+        .wifi { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+        .wifi h3 { margin: 0 0 10px 0; font-size: 16px; }
+        .wifi ul { margin: 0; padding-left: 20px; }
+        .wifi li { margin: 5px 0; font-family: monospace; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>$title</h1>
+        <div class="reason">$reason</div>
+        <div class="time">📍 $dateStr</div>
+        <div class="coords">
+            Lat: $lat<br>
+            Lon: $lon
+        </div>
+        <div class="accuracy">📏 Genauigkeit: ${acc}m</div>
+        <iframe class="map" src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-0.01},${lat-0.01},${lon+0.01},${lat+0.01}&layer=mapnik&marker=$lat,$lon"></iframe>
+        <div class="links">
+            <a href="$googleMapsUrl" target="_blank">🗺️ Google Maps</a>
+            <a href="$osmUrl" target="_blank" class="osm">🗺️ OpenStreetMap</a>
+        </div>$wifiHtml
+    </div>
+</body>
+</html>"""
+        } else {
+            """<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TraceBack Last Breath - $dateStr</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 12px; padding: 20px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 5px 0; font-size: 24px; color: $headerColor; }
+        .reason { background: ${if (isTest) "#e8f5e9" else "#ffebee"}; padding: 10px 15px; border-radius: 8px; margin: 10px 0; color: ${if (isTest) "#2e7d32" else "#c62828"}; }
+        .time { color: #666; margin-bottom: 20px; }
+        .warning { background: #fff3cd; padding: 15px; border-radius: 8px; color: #856404; }
+        .wifi { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+        .wifi h3 { margin: 0 0 10px 0; font-size: 16px; }
+        .wifi ul { margin: 0; padding-left: 20px; }
+        .wifi li { margin: 5px 0; font-family: monospace; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>$title</h1>
+        <div class="reason">$reason</div>
+        <div class="time">⚠️ $dateStr</div>
+        <div class="warning">Standort konnte nicht ermittelt werden</div>$wifiHtml
+    </div>
+</body>
+</html>"""
+        }
     }
     
     private fun sendSms(context: Context, number: String, message: String): Boolean {
