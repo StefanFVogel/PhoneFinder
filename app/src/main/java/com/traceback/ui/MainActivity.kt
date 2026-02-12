@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -73,7 +75,13 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Mit Google Drive verbunden", Toast.LENGTH_SHORT).show()
             showFeatureNotification(
                 "☁️ Google Drive verbunden",
-                "KML-Dateien werden im Ordner 'TraceBack' in deinem Google Drive gespeichert:\n• ping.kml - Letzter Ping\n• last_breath_*.kml - Notfall-Standorte"
+                "📍 Gesammelte Daten:\n" +
+                "• GPS-Koordinaten\n" +
+                "• Zeitstempel\n\n" +
+                "📁 Speicherort: TraceBack-Ordner in deinem Google Drive\n" +
+                "• ping.kml - Letzter Ping\n" +
+                "• last_breath_*.kml - Notfall-Standorte\n\n" +
+                "🔒 Sicherheit: Nur du hast Zugriff auf deinen Drive-Ordner."
             )
         }.addOnFailureListener { e ->
             Toast.makeText(this, "Google Sign-In fehlgeschlagen: ${e.message}", Toast.LENGTH_LONG).show()
@@ -151,18 +159,19 @@ class MainActivity : AppCompatActivity() {
             
             prefs.trackingEnabled = isChecked
             if (isChecked) {
-                PingWorker.schedule(this)
-                Toast.makeText(this, "Ping-Überwachung aktiviert", Toast.LENGTH_SHORT).show()
-                showFeatureNotification(
-                    "📡 Ping-Überwachung aktiviert",
-                    "TraceBack prüft periodisch deinen Standort und speichert ping.kml in Google Drive.\n\nDer Ping zeigt, dass die App noch funktioniert."
-                )
+                val interval = prefs.pingIntervalMinutes
+                PingWorker.schedule(this, interval)
+                Toast.makeText(this, "Ping-Überwachung aktiviert (${PingWorker.getIntervalLabel(interval)})", Toast.LENGTH_SHORT).show()
+                showPingDisclosure(interval)
             } else {
                 PingWorker.cancel(this)
                 Toast.makeText(this, "Ping-Überwachung deaktiviert", Toast.LENGTH_SHORT).show()
             }
             updateStatusIndicators()
         }
+        
+        // === PING INTERVAL SPINNER ===
+        setupPingIntervalSpinner(prefs)
         
         // === LAST BREATH THRESHOLD CHECKBOXES ===
         
@@ -207,6 +216,48 @@ class MainActivity : AppCompatActivity() {
         if (binding.checkbox4.isChecked) thresholds.add(4)
         if (binding.checkbox2.isChecked) thresholds.add(2)
         TraceBackApp.instance.securePrefs.lastBreathThresholds = thresholds
+    }
+    
+    private fun setupPingIntervalSpinner(prefs: com.traceback.util.SecurePrefs) {
+        val intervals = PingWorker.INTERVALS
+        val labels = intervals.map { PingWorker.getIntervalLabel(it) }
+        
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, labels)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerPingInterval.adapter = adapter
+        
+        // Set current selection
+        val currentInterval = prefs.pingIntervalMinutes
+        val index = intervals.indexOf(currentInterval).takeIf { it >= 0 } ?: 1 // Default to 1 hour
+        binding.spinnerPingInterval.setSelection(index)
+        
+        binding.spinnerPingInterval.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: android.view.View?, position: Int, id: Long) {
+                val newInterval = intervals[position]
+                if (newInterval != prefs.pingIntervalMinutes) {
+                    prefs.pingIntervalMinutes = newInterval
+                    if (prefs.trackingEnabled) {
+                        PingWorker.schedule(this@MainActivity, newInterval)
+                        Toast.makeText(this@MainActivity, "Ping-Intervall: ${PingWorker.getIntervalLabel(newInterval)}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+    }
+    
+    /**
+     * Show disclosure when Ping is enabled
+     */
+    private fun showPingDisclosure(intervalMinutes: Int) {
+        showFeatureNotification(
+            "📡 Ping-Überwachung aktiviert",
+            "TraceBack sendet alle ${PingWorker.getIntervalLabel(intervalMinutes)} deinen Standort an Google Drive.\n\n" +
+            "📍 Gesammelte Daten:\n" +
+            "• GPS-Koordinaten\n" +
+            "• Zeitstempel\n\n" +
+            "☁️ Speicherort: Google Drive (TraceBack-Ordner)"
+        )
     }
     
     private fun showThresholdNotification() {
@@ -407,7 +458,13 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "Telegram-Konfiguration gespeichert ✓", Toast.LENGTH_SHORT).show()
                     showFeatureNotification(
                         "📱 Telegram Bot konfiguriert",
-                        "Last Breath Standorte werden an Chat-ID $chatId gesendet.\n\nTipp: Teste mit 'Last Breath testen' ob alles funktioniert."
+                        "📍 Gesammelte Daten bei Last Breath:\n" +
+                        "• GPS-Koordinaten\n" +
+                        "• Sichtbare WLAN-Netzwerke\n" +
+                        "• Zeitstempel\n\n" +
+                        "📤 Übertragung: Telegram Bot API (HTTPS)\n" +
+                        "🔒 Hinweis: Telegram-Nachrichten sind Ende-zu-Ende verschlüsselt wenn du einen privaten Chat nutzt.\n\n" +
+                        "Tipp: Teste mit 'Last Breath testen' ob alles funktioniert."
                     )
                 } else {
                     Toast.makeText(this, "Telegram-Konfiguration entfernt", Toast.LENGTH_SHORT).show()
@@ -445,7 +502,15 @@ class MainActivity : AppCompatActivity() {
                     }
                     showFeatureNotification(
                         "📱 Notfall-SMS konfiguriert",
-                        "Last Breath Standorte werden per SMS an $number gesendet.\n\nFunktioniert auch ohne Internet!"
+                        "📍 Gesammelte Daten bei Last Breath:\n" +
+                        "• GPS-Koordinaten\n" +
+                        "• Sichtbare WLAN-Netzwerke\n" +
+                        "• Zeitstempel\n\n" +
+                        "📤 Übertragung: SMS an $number\n\n" +
+                        "⚠️ WICHTIG: SMS sind NICHT verschlüsselt!\n" +
+                        "• Mobilfunkanbieter können Inhalt lesen\n" +
+                        "• Behörden können auf Anfrage zugreifen\n\n" +
+                        "✅ Vorteil: Funktioniert auch ohne Internet!"
                     )
                 } else {
                     Toast.makeText(this, "SMS-Nummer entfernt", Toast.LENGTH_SHORT).show()

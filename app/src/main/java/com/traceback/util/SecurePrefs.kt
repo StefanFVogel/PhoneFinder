@@ -32,6 +32,7 @@ class SecurePrefs(context: Context) {
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_ts"
         private const val KEY_LAST_BREATH_THRESHOLD = "last_breath_threshold"
         private const val KEY_LAST_BREATH_THRESHOLDS = "last_breath_thresholds"
+        private const val KEY_PING_INTERVAL_MINUTES = "ping_interval_minutes"
     }
     
     // Telegram Configuration
@@ -76,6 +77,11 @@ class SecurePrefs(context: Context) {
     var lastSyncTimestamp: Long
         get() = prefs.getLong(KEY_LAST_SYNC_TIMESTAMP, 0)
         set(value) = prefs.edit().putLong(KEY_LAST_SYNC_TIMESTAMP, value).apply()
+    
+    // Ping interval in minutes (15, 60, 300, 1440)
+    var pingIntervalMinutes: Int
+        get() = prefs.getInt(KEY_PING_INTERVAL_MINUTES, 60) // Default: 1 hour
+        set(value) = prefs.edit().putInt(KEY_PING_INTERVAL_MINUTES, value).apply()
     
     fun isConfiguredForEmergency(): Boolean {
         return !telegramBotToken.isNullOrBlank() && !telegramChatId.isNullOrBlank()

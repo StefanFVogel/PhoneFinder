@@ -35,12 +35,23 @@ class PingWorker(
         private const val TAG = "PingWorker"
         private const val WORK_NAME = "traceback_ping"
         
-        fun schedule(context: Context) {
+        // Available intervals in minutes
+        val INTERVALS = listOf(15, 60, 300, 1440) // 15min, 1h, 5h, 1 day
+        
+        fun getIntervalLabel(minutes: Int): String = when (minutes) {
+            15 -> "15 Minuten"
+            60 -> "1 Stunde"
+            300 -> "5 Stunden"
+            1440 -> "1 Tag"
+            else -> "$minutes Minuten"
+        }
+        
+        fun schedule(context: Context, intervalMinutes: Int = 60) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
             
-            val request = PeriodicWorkRequestBuilder<PingWorker>(15, TimeUnit.MINUTES)
+            val request = PeriodicWorkRequestBuilder<PingWorker>(intervalMinutes.toLong(), TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES)
                 .build()
@@ -48,11 +59,11 @@ class PingWorker(
             WorkManager.getInstance(context)
                 .enqueueUniquePeriodicWork(
                     WORK_NAME,
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.REPLACE, // Replace to update interval
                     request
                 )
             
-            Log.i(TAG, "PingWorker scheduled")
+            Log.i(TAG, "PingWorker scheduled with interval: $intervalMinutes minutes")
         }
         
         fun cancel(context: Context) {
