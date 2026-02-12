@@ -16,6 +16,7 @@ import com.google.android.gms.location.Priority
 import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.drive.DriveManager
+import com.traceback.telegram.TelegramNotifier
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -94,21 +95,48 @@ class PingWorker(
             return Result.success() // Don't retry, user needs to fix permissions
         }
         
-        // 2. Get current location and upload ping
+        // 2. Get current location
+        val location = getCurrentLocation()
+        
+        // 3. Send to ALL configured channels
+        var anySuccess = false
+        
+        // Drive
         val driveManager = DriveManager(applicationContext)
-        if (!driveManager.isReady()) {
-            Log.w(TAG, "Drive not ready")
-            return Result.success()
+        if (driveManager.isReady()) {
+            val driveSuccess = uploadPingToDrive(driveManager, location)
+            if (driveSuccess) {
+                Log.i(TAG, "Ping to Drive: OK")
+                anySuccess = true
+            } else {
+                Log.w(TAG, "Ping to Drive: FAILED")
+            }
+        } else {
+            Log.d(TAG, "Drive not configured, skipping")
         }
         
-        val location = getCurrentLocation()
-        val success = uploadPing(driveManager, location)
-        
-        if (success) {
-            prefs.lastSyncTimestamp = System.currentTimeMillis()
-            Log.i(TAG, "Ping uploaded successfully")
+        // Telegram
+        val telegramNotifier = TelegramNotifier(prefs)
+        val telegramConfigured = !prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()
+        if (telegramConfigured) {
+            val telegramSuccess = sendPingToTelegram(telegramNotifier, location)
+            if (telegramSuccess) {
+                Log.i(TAG, "Ping to Telegram: OK")
+                anySuccess = true
+            } else {
+                Log.w(TAG, "Ping to Telegram: FAILED")
+            }
         } else {
-            Log.e(TAG, "Ping upload failed")
+            Log.d(TAG, "Telegram not configured, skipping")
+        }
+        
+        if (anySuccess) {
+            prefs.lastSyncTimestamp = System.currentTimeMillis()
+            Log.i(TAG, "Ping completed (at least one channel succeeded)")
+        } else if (!driveManager.isReady() && !telegramConfigured) {
+            Log.w(TAG, "No channels configured for ping!")
+        } else {
+            Log.e(TAG, "All ping channels failed")
         }
         
         return Result.success()
@@ -161,7 +189,7 @@ class PingWorker(
         }
     }
     
-    private suspend fun uploadPing(driveManager: DriveManager, location: Location?): Boolean {
+    private suspend fun uploadPingToDrive(driveManager: DriveManager, location: Location?): Boolean {
         val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date())
@@ -203,6 +231,27 @@ class PingWorker(
         }
         
         return driveManager.uploadPingKml(kmlContent)
+    }
+    
+    private suspend fun sendPingToTelegram(notifier: TelegramNotifier, location: Location?): Boolean {
+        val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())
+        
+        return if (location != null) {
+            // Send location pin + text
+            val textSuccess = notifier.sendEmergency(
+                "📡 <b>TraceBack Ping</b>\n" +
+                "📍 $dateStr\n" +
+                "📏 Genauigkeit: ${location.accuracy.toInt()}m"
+            )
+            val locationSuccess = notifier.sendLocation(location.latitude, location.longitude)
+            textSuccess || locationSuccess
+        } else {
+            notifier.sendEmergency(
+                "📡 <b>TraceBack Ping</b>\n" +
+                "⚠️ $dateStr\n" +
+                "Standort konnte nicht ermittelt werden"
+            )
+        }
     }
     
     private fun showNotification(title: String, message: String) {

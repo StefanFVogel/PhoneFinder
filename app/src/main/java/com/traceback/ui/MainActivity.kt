@@ -123,28 +123,43 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
-        // Drive row
+        // Drive row - show disclosure before sign-in
         binding.rowDrive.setOnClickListener {
             if (driveManager.isReady()) {
                 Toast.makeText(this, "✓ Mit Google Drive verbunden", Toast.LENGTH_SHORT).show()
             } else {
-                signInToGoogle()
+                showDriveDisclosure()
             }
         }
         
-        // Telegram row
+        // Telegram row - show disclosure before setup
         binding.rowTelegram.setOnClickListener {
-            showTelegramSetupDialog()
+            val prefs = TraceBackApp.instance.securePrefs
+            if (prefs.telegramBotToken.isNullOrBlank()) {
+                showTelegramDisclosure()
+            } else {
+                showTelegramSetupDialog()
+            }
         }
         
-        // SMS row
+        // SMS row - show disclosure before setup
         binding.rowSms.setOnClickListener {
-            showSmsSetupDialog()
+            val prefs = TraceBackApp.instance.securePrefs
+            if (prefs.emergencySmsNumber.isNullOrBlank()) {
+                showSmsDisclosure()
+            } else {
+                showSmsSetupDialog()
+            }
         }
         
-        // Battery row
+        // Battery row - show disclosure before requesting exemption
         binding.rowBattery.setOnClickListener {
-            requestBatteryExemption()
+            val pm = getSystemService(PowerManager::class.java)
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                showBatteryDisclosure()
+            } else {
+                Toast.makeText(this, "✓ Akku-Optimierung bereits deaktiviert", Toast.LENGTH_SHORT).show()
+            }
         }
         
         // === PING CONTROLS ===
@@ -236,10 +251,28 @@ class MainActivity : AppCompatActivity() {
                         PingWorker.schedule(this@MainActivity, newInterval)
                         Toast.makeText(this@MainActivity, "Ping-Intervall: ${PingWorker.getIntervalLabel(newInterval)}", Toast.LENGTH_SHORT).show()
                     }
+                    updatePingIndicator(newInterval)
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+        
+        // Initial indicator update
+        updatePingIndicator(prefs.pingIntervalMinutes)
+    }
+    
+    /**
+     * Update ping interval indicator color
+     * Yellow = high message frequency (15min, 1h)
+     * Green = low message frequency (5h, 24h)
+     * No red - ping helps detect permission revocation
+     */
+    private fun updatePingIndicator(intervalMinutes: Int) {
+        val colorRes = when (intervalMinutes) {
+            15, 60 -> R.drawable.indicator_yellow  // High frequency
+            else -> R.drawable.indicator_green      // 5h, 24h = low frequency
+        }
+        binding.indicatorPing.setImageResource(colorRes)
     }
     
     /**
@@ -421,6 +454,137 @@ class MainActivity : AppCompatActivity() {
         googleSignInLauncher.launch(client.signInIntent)
     }
     
+    // ==================== FEATURE DISCLOSURE DIALOGS ====================
+    // Each feature gets its own disclosure explaining WHY the permission is needed
+    
+    /**
+     * Google Drive disclosure - explains data storage
+     */
+    private fun showDriveDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("☁️ Google Drive Berechtigung")
+            .setMessage(
+                "TraceBack möchte Zugriff auf Google Drive um:\n\n" +
+                "📍 Gesammelte Daten speichern:\n" +
+                "• GPS-Koordinaten (Breiten-/Längengrad)\n" +
+                "• Zeitstempel\n" +
+                "• Bei Last Breath: Sichtbare WLAN-Netzwerke\n\n" +
+                "📁 Speicherort:\n" +
+                "Ein eigener \"TraceBack\"-Ordner in deinem Drive\n\n" +
+                "🔒 Sicherheit:\n" +
+                "Nur du hast Zugriff auf diesen Ordner. " +
+                "TraceBack kann nur Dateien lesen/schreiben, die es selbst erstellt hat."
+            )
+            .setPositiveButton("Zustimmen & Verbinden") { _, _ ->
+                signInToGoogle()
+            }
+            .setNegativeButton("Ablehnen", null)
+            .setCancelable(true)
+            .show()
+    }
+    
+    /**
+     * Telegram disclosure - explains notification channel
+     */
+    private fun showTelegramDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("📱 Telegram Bot Berechtigung")
+            .setMessage(
+                "TraceBack möchte einen Telegram Bot konfigurieren um:\n\n" +
+                "📍 Bei Last Breath senden:\n" +
+                "• GPS-Koordinaten (Breiten-/Längengrad)\n" +
+                "• Sichtbare WLAN-Netzwerke\n" +
+                "• Akkustand und Zeitstempel\n\n" +
+                "📡 Bei aktiviertem Ping:\n" +
+                "• Regelmäßige Standort-Updates\n" +
+                "• Status-Benachrichtigungen\n\n" +
+                "🔒 Sicherheit:\n" +
+                "Du erstellst deinen eigenen Bot bei @BotFather. " +
+                "Nur du kennst den Token und die Chat-ID."
+            )
+            .setPositiveButton("Verstanden") { _, _ ->
+                showTelegramSetupDialog()
+            }
+            .setNegativeButton("Ablehnen", null)
+            .setCancelable(true)
+            .show()
+    }
+    
+    /**
+     * SMS disclosure - explains fallback channel and privacy concerns
+     */
+    private fun showSmsDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("📱 SMS Berechtigung")
+            .setMessage(
+                "TraceBack möchte SMS-Zugriff als Notfall-Fallback:\n\n" +
+                "📍 Bei Last Breath senden:\n" +
+                "• GPS-Koordinaten (Breiten-/Längengrad)\n" +
+                "• Sichtbare WLAN-Netzwerke\n" +
+                "• Akkustand und Zeitstempel\n\n" +
+                "✅ Vorteil:\n" +
+                "Funktioniert auch OHNE Internet!\n\n" +
+                "⚠️ WICHTIG - Datenschutz:\n" +
+                "• SMS sind NICHT verschlüsselt\n" +
+                "• Dein Mobilfunkanbieter kann Inhalte lesen\n" +
+                "• Behörden können auf Anfrage zugreifen\n\n" +
+                "Nutze SMS nur als letzten Fallback wenn kein Internet verfügbar."
+            )
+            .setPositiveButton("Verstanden") { _, _ ->
+                showSmsSetupDialog()
+            }
+            .setNegativeButton("Ablehnen", null)
+            .setCancelable(true)
+            .show()
+    }
+    
+    /**
+     * SMS permission disclosure - shown right before Android permission request
+     */
+    private fun showSmsPermissionDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("📱 SMS senden erlauben?")
+            .setMessage(
+                "TraceBack benötigt die SMS-Berechtigung um bei Last Breath " +
+                "eine Notfall-SMS mit deinem Standort zu senden.\n\n" +
+                "Dies ist ein Fallback für den Fall, dass kein Internet verfügbar ist.\n\n" +
+                "⚠️ Erinnerung: SMS sind nicht verschlüsselt!"
+            )
+            .setPositiveButton("Erlauben") { _, _ ->
+                requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
+            }
+            .setNegativeButton("Ablehnen") { _, _ ->
+                Toast.makeText(this, "SMS-Nummer gespeichert (ohne Berechtigung)", Toast.LENGTH_SHORT).show()
+            }
+            .setCancelable(false)
+            .show()
+    }
+    
+    /**
+     * Battery optimization disclosure - explains why it's needed
+     */
+    private fun showBatteryDisclosure() {
+        AlertDialog.Builder(this)
+            .setTitle("🔋 Akku-Optimierung deaktivieren")
+            .setMessage(
+                "TraceBack benötigt diese Ausnahme weil:\n\n" +
+                "⚡ Android beendet Hintergrund-Apps:\n" +
+                "Um Akku zu sparen, stoppt Android Apps die im Hintergrund laufen. " +
+                "Das würde TraceBack daran hindern, bei kritischem Akkustand zu reagieren.\n\n" +
+                "🚨 Last Breath funktioniert nur wenn:\n" +
+                "Die App auch bei geschlossenem Bildschirm auf niedrigen Akkustand reagieren kann.\n\n" +
+                "📊 Auswirkung:\n" +
+                "Minimaler zusätzlicher Akkuverbrauch. " +
+                "TraceBack läuft nur bei bestimmten System-Events (Akkustand, Ping-Intervall)."
+            )
+            .setPositiveButton("Einstellung öffnen") { _, _ ->
+                requestBatteryExemption()
+            }
+            .setNegativeButton("Ablehnen", null)
+            .setCancelable(true)
+            .show()
+    }
+    
     private fun showTelegramSetupDialog() {
         val prefs = TraceBackApp.instance.securePrefs
         
@@ -491,8 +655,8 @@ class MainActivity : AppCompatActivity() {
                 
                 if (!number.isNullOrBlank()) {
                     if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-                        requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 200)
-                        Toast.makeText(this, "SMS-Nummer gespeichert - bitte SMS-Berechtigung erteilen", Toast.LENGTH_LONG).show()
+                        // Show disclosure before Android permission request
+                        showSmsPermissionDisclosure()
                     } else {
                         Toast.makeText(this, "SMS-Nummer gespeichert ✓", Toast.LENGTH_SHORT).show()
                     }
@@ -552,22 +716,17 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun requestBatteryExemption() {
-        val pm = getSystemService(PowerManager::class.java)
-        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-            try {
-                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-                startActivity(intent)
-            } catch (e: Exception) {
-                try {
-                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                } catch (e2: Exception) {
-                    Toast.makeText(this, "Bitte Akku-Optimierung manuell in den Einstellungen deaktivieren", Toast.LENGTH_LONG).show()
-                }
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
             }
-        } else {
-            Toast.makeText(this, "✓ Akku-Optimierung bereits deaktiviert", Toast.LENGTH_SHORT).show()
+            startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (e2: Exception) {
+                Toast.makeText(this, "Bitte Akku-Optimierung manuell in den Einstellungen deaktivieren", Toast.LENGTH_LONG).show()
+            }
         }
     }
     
