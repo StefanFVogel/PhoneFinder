@@ -16,12 +16,11 @@ import com.google.android.gms.location.Priority
 import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.drive.DriveManager
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * PingWorker - Periodically checks permissions and uploads a ping.kml to Google Drive.
@@ -134,8 +133,17 @@ class PingWorker(
         }
         
         return try {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).await()
+            suspendCoroutine { continuation ->
+                val fusedLocationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
+                fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+                    .addOnSuccessListener { location ->
+                        continuation.resume(location)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "Location request failed", e)
+                        continuation.resume(null)
+                    }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get location", e)
             null
