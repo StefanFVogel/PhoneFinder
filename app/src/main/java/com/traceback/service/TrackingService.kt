@@ -16,7 +16,7 @@ import androidx.core.app.NotificationCompat
 import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.ui.MainActivity
-import com.traceback.worker.PingWorker
+// PingWorker removed - now handled by PingService
 import kotlinx.coroutines.*
 
 /**
@@ -67,10 +67,9 @@ class TrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, createNotification())
         
-        // Schedule PingWorker for periodic pings
-        PingWorker.schedule(this)
+        // Note: PingService handles periodic pings now (started separately)
         
-        Log.i(TAG, "TrackingService started")
+        Log.i(TAG, "TrackingService started (battery monitor)")
         return START_STICKY
     }
     
