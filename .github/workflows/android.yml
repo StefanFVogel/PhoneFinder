@@ -113,3 +113,33 @@ jobs:
         name: app-release-aab
         path: app/build/outputs/bundle/release/*.aab
         retention-days: 90
+
+    # === GOOGLE DRIVE UPLOAD ===
+    - name: Upload Debug APK to Google Drive
+      uses: JADU-Labs/google-drive-upload-git-action@main
+      with:
+        credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+        filename: "app/build/outputs/apk/debug/app-debug.apk"
+        folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+        overwrite: "true"
+        name: "TraceBack-debug.apk"
+
+    - name: Upload Release APK to Google Drive
+      if: env.HAVE_RELEASE_KEY == 'true'
+      uses: JADU-Labs/google-drive-upload-git-action@main
+      with:
+        credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+        filename: "app/build/outputs/apk/release/app-release.apk"
+        folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+        overwrite: "true"
+        name: "TraceBack-release.apk"
+
+    - name: Upload Release AAB to Google Drive
+      if: env.HAVE_RELEASE_KEY == 'true'
+      uses: JADU-Labs/google-drive-upload-git-action@main
+      with:
+        credentials: ${{ secrets.GDRIVE_CREDENTIALS }}
+        filename: "app/build/outputs/bundle/release/app-release.aab"
+        folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+        overwrite: "true"
+        name: "TraceBack-release.aab"
