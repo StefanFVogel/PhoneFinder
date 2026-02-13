@@ -130,13 +130,21 @@ jobs:
         FILE_PATH: "app/build/outputs/apk/debug/app-debug.apk"
         FILE_NAME: "TraceBack-Debug.apk"
       run: |
-        python - <<EOF
-        import os, json
+        python - <<'PYEOF'
+        import os, json, base64
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
-        creds_json = json.loads(os.environ['GDRIVE_CREDENTIALS'])
+        # Try to decode base64, otherwise use as-is
+        creds_raw = os.environ['GDRIVE_CREDENTIALS']
+        try:
+            creds_json = json.loads(base64.b64decode(creds_raw).decode('utf-8'))
+            print("Credentials: base64 decoded")
+        except:
+            creds_json = json.loads(creds_raw)
+            print("Credentials: raw JSON")
+
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
 
@@ -158,7 +166,7 @@ jobs:
             meta = {'name': file_name, 'parents': [folder_id]}
             f = drive.files().create(body=meta, media_body=media, fields='id').execute()
             print(f"Created: {file_name} ({f.get('id')})")
-        EOF
+        PYEOF
 
     - name: Upload Release APK to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
@@ -168,13 +176,18 @@ jobs:
         FILE_PATH: "app/build/outputs/apk/release/app-release.apk"
         FILE_NAME: "TraceBack-Release.apk"
       run: |
-        python - <<EOF
-        import os, json
+        python - <<'PYEOF'
+        import os, json, base64
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
-        creds_json = json.loads(os.environ['GDRIVE_CREDENTIALS'])
+        creds_raw = os.environ['GDRIVE_CREDENTIALS']
+        try:
+            creds_json = json.loads(base64.b64decode(creds_raw).decode('utf-8'))
+        except:
+            creds_json = json.loads(creds_raw)
+
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
 
@@ -196,7 +209,7 @@ jobs:
             meta = {'name': file_name, 'parents': [folder_id]}
             f = drive.files().create(body=meta, media_body=media, fields='id').execute()
             print(f"Created: {file_name} ({f.get('id')})")
-        EOF
+        PYEOF
 
     - name: Upload Release AAB to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
@@ -206,13 +219,18 @@ jobs:
         FILE_PATH: "app/build/outputs/bundle/release/app-release.aab"
         FILE_NAME: "TraceBack-Release.aab"
       run: |
-        python - <<EOF
-        import os, json
+        python - <<'PYEOF'
+        import os, json, base64
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
-        creds_json = json.loads(os.environ['GDRIVE_CREDENTIALS'])
+        creds_raw = os.environ['GDRIVE_CREDENTIALS']
+        try:
+            creds_json = json.loads(base64.b64decode(creds_raw).decode('utf-8'))
+        except:
+            creds_json = json.loads(creds_raw)
+
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
 
@@ -234,4 +252,4 @@ jobs:
             meta = {'name': file_name, 'parents': [folder_id]}
             f = drive.files().create(body=meta, media_body=media, fields='id').execute()
             print(f"Created: {file_name} ({f.get('id')})")
-        EOF
+        PYEOF
