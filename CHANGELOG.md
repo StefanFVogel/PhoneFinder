@@ -1,5 +1,13 @@
 # TraceBack Changelog
 
+## v1.3.4 (versionCode 8) - 2026-02-13
+
+### Verbesserungen
+- **Ping zeigt jetzt WLAN-Netzwerke**: Genau wie Last Breath zeigt der Ping jetzt auch die sichtbaren WLANs an
+- Funktioniert in Telegram, Drive KML und HTML-Ansicht
+
+---
+
 ## v1.3.3 (versionCode 7) - 2026-02-12
 
 ### Neue Features

@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
@@ -98,14 +99,17 @@ class PingWorker(
         // 2. Get current location
         val location = getCurrentLocation()
         
-        // 3. Send to ALL configured channels
+        // 3. Scan WiFi networks
+        val wifiNetworks = scanWifiNetworks()
+        
+        // 4. Send to ALL configured channels
         var anySuccess = false
         
         // Drive (KML + HTML)
         val driveManager = DriveManager(applicationContext)
         if (driveManager.isReady()) {
-            val kmlSuccess = uploadPingToDrive(driveManager, location)
-            val htmlSuccess = uploadPingHtml(driveManager, location)
+            val kmlSuccess = uploadPingToDrive(driveManager, location, wifiNetworks)
+            val htmlSuccess = uploadPingHtml(driveManager, location, wifiNetworks)
             if (kmlSuccess || htmlSuccess) {
                 Log.i(TAG, "Ping to Drive: KML=$kmlSuccess, HTML=$htmlSuccess")
                 anySuccess = true
@@ -120,7 +124,7 @@ class PingWorker(
         val telegramNotifier = TelegramNotifier(prefs)
         val telegramConfigured = !prefs.telegramBotToken.isNullOrBlank() && !prefs.telegramChatId.isNullOrBlank()
         if (telegramConfigured) {
-            val telegramSuccess = sendPingToTelegram(telegramNotifier, location)
+            val telegramSuccess = sendPingToTelegram(telegramNotifier, location, wifiNetworks)
             if (telegramSuccess) {
                 Log.i(TAG, "Ping to Telegram: OK")
                 anySuccess = true
@@ -165,6 +169,26 @@ class PingWorker(
         return hasFineLocation && hasBackgroundLocation && batteryOptDisabled
     }
     
+    private fun scanWifiNetworks(): List<String> {
+        return try {
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val results = wifiManager.scanResults
+            Log.i(TAG, "WiFi scan found ${results.size} networks")
+            
+            results
+                .sortedByDescending { it.level }
+                .mapNotNull { result ->
+                    val ssid = result.SSID
+                    if (ssid.isNullOrBlank() || ssid == "<unknown ssid>") null
+                    else "$ssid (${result.level} dBm)"
+                }
+                .distinct()
+        } catch (e: Exception) {
+            Log.e(TAG, "WiFi scan failed", e)
+            emptyList()
+        }
+    }
+    
     private suspend fun getCurrentLocation(): Location? {
         if (ContextCompat.checkSelfPermission(
                 applicationContext, Manifest.permission.ACCESS_FINE_LOCATION
@@ -190,19 +214,20 @@ class PingWorker(
         }
     }
     
-    private suspend fun uploadPingToDrive(driveManager: DriveManager, location: Location?): Boolean {
+    private suspend fun uploadPingToDrive(driveManager: DriveManager, location: Location?, wifiNetworks: List<String>): Boolean {
         val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }.format(Date())
         
         val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        val wifiInfo = if (wifiNetworks.isNotEmpty()) "\nWLANs: ${wifiNetworks.take(3).joinToString(", ")}" else ""
         
         val kmlContent = if (location != null) {
             """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
 <name>TraceBack Ping</name>
-<description>Letzter Ping - $dateStr</description>
+<description>Letzter Ping - $dateStr$wifiInfo</description>
 <Style id="pingStyle">
     <IconStyle>
         <color>ff00ff00</color>
@@ -212,7 +237,7 @@ class PingWorker(
 </Style>
 <Placemark>
 <name>📍 Ping</name>
-<description>$dateStr\nGenauigkeit: ${location.accuracy}m</description>
+<description>$dateStr\nGenauigkeit: ${location.accuracy}m$wifiInfo</description>
 <styleUrl>#pingStyle</styleUrl>
 <TimeStamp><when>$timestamp</when></TimeStamp>
 <Point>
@@ -226,7 +251,7 @@ class PingWorker(
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
 <name>TraceBack Ping</name>
-<description>Ping ohne Standort - $dateStr</description>
+<description>Ping ohne Standort - $dateStr$wifiInfo</description>
 </Document>
 </kml>"""
         }
@@ -234,8 +259,19 @@ class PingWorker(
         return driveManager.uploadPingKml(kmlContent)
     }
     
-    private suspend fun uploadPingHtml(driveManager: DriveManager, location: Location?): Boolean {
+    private suspend fun uploadPingHtml(driveManager: DriveManager, location: Location?, wifiNetworks: List<String>): Boolean {
         val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault()).format(Date())
+        
+        val wifiHtml = if (wifiNetworks.isNotEmpty()) {
+            """
+        <div class="wifi">
+            <h3>📶 Sichtbare WLANs (${wifiNetworks.size})</h3>
+            <ul>
+                ${wifiNetworks.take(10).joinToString("\n                ") { "<li>$it</li>" }}
+                ${if (wifiNetworks.size > 10) "<li>... und ${wifiNetworks.size - 10} weitere</li>" else ""}
+            </ul>
+        </div>"""
+        } else ""
         
         val htmlContent = if (location != null) {
             val lat = location.latitude
@@ -271,6 +307,10 @@ class PingWorker(
         .links a:hover { background: #3367d6; }
         .links a.osm { background: #7ebc6f; }
         .links a.osm:hover { background: #6aa85c; }
+        .wifi { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+        .wifi h3 { margin: 0 0 10px 0; font-size: 16px; }
+        .wifi ul { margin: 0; padding-left: 20px; }
+        .wifi li { margin: 5px 0; font-family: monospace; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -287,7 +327,7 @@ class PingWorker(
         <div class="links">
             <a href="$googleMapsUrl" target="_blank">🗺️ Google Maps</a>
             <a href="$osmUrl" target="_blank" class="osm">🗺️ OpenStreetMap</a>
-        </div>
+        </div>$wifiHtml
     </div>
 </body>
 </html>"""
@@ -304,13 +344,17 @@ class PingWorker(
         h1 { margin: 0 0 10px 0; font-size: 24px; }
         .time { color: #666; margin-bottom: 20px; }
         .warning { background: #fff3cd; padding: 15px; border-radius: 8px; color: #856404; }
+        .wifi { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+        .wifi h3 { margin: 0 0 10px 0; font-size: 16px; }
+        .wifi ul { margin: 0; padding-left: 20px; }
+        .wifi li { margin: 5px 0; font-family: monospace; font-size: 13px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>📡 TraceBack Ping</h1>
         <div class="time">⚠️ $dateStr</div>
-        <div class="warning">Standort konnte nicht ermittelt werden</div>
+        <div class="warning">Standort konnte nicht ermittelt werden</div>$wifiHtml
     </div>
 </body>
 </html>"""
@@ -319,7 +363,7 @@ class PingWorker(
         return driveManager.uploadHtml(htmlContent, "ping.html")
     }
     
-    private suspend fun sendPingToTelegram(notifier: TelegramNotifier, location: Location?): Boolean {
+    private suspend fun sendPingToTelegram(notifier: TelegramNotifier, location: Location?, wifiNetworks: List<String>): Boolean {
         val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         
         val message = buildString {
@@ -346,6 +390,15 @@ class PingWorker(
                 appendLine("🗺️ https://maps.google.com/maps?q=${location.latitude},${location.longitude}")
             } else {
                 appendLine("⚠️ Standort konnte nicht ermittelt werden")
+            }
+            
+            if (wifiNetworks.isNotEmpty()) {
+                appendLine()
+                appendLine("📶 Sichtbare WLANs (${wifiNetworks.size}):")
+                wifiNetworks.take(5).forEach { appendLine("• $it") }
+                if (wifiNetworks.size > 5) {
+                    appendLine("• ... und ${wifiNetworks.size - 5} weitere")
+                }
             }
             
             appendLine()
