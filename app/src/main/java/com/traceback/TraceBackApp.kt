@@ -11,6 +11,7 @@ class TraceBackApp : Application() {
     companion object {
         const val CHANNEL_TRACKING = "traceback_tracking"
         const val CHANNEL_ALERTS = "traceback_alerts"
+        const val CHANNEL_SERVICE = "traceback_service"
         
         lateinit var instance: TraceBackApp
             private set
@@ -49,8 +50,19 @@ class TraceBackApp : Application() {
                 description = "Wichtige Warnungen wie Sync-Fehler oder Drift-Detection"
             }
             
+            // Service channel (for foreground service)
+            val serviceChannel = NotificationChannel(
+                CHANNEL_SERVICE,
+                "Ping-Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Zeigt den Status des Ping-Services an"
+                setShowBadge(false)
+            }
+            
             manager.createNotificationChannel(trackingChannel)
             manager.createNotificationChannel(alertsChannel)
+            manager.createNotificationChannel(serviceChannel)
         }
     }
 }

@@ -1,5 +1,21 @@
 # TraceBack Changelog
 
+## v1.4.0 (versionCode 9) - 2026-02-13
+
+### Neue Features
+- **Zuverlässige Ping-Intervalle**: Umstellung von WorkManager auf Foreground Service
+  - AlarmManager mit setExactAndAllowWhileIdle() für exaktes Timing
+  - Funktioniert auch im Doze-Modus zuverlässig
+  - Permanente Notification zeigt Status ("TraceBack aktiv")
+- Automatischer Neustart nach Geräte-Boot
+- Sofortiger erster Ping beim Aktivieren
+
+### Verbesserungen
+- Zeigt letzten Ping-Zeitpunkt in der Notification
+- Besseres Fehler-Feedback bei fehlenden Berechtigungen
+
+---
+
 ## v1.3.4 (versionCode 8) - 2026-02-13
 
 ### Verbesserungen

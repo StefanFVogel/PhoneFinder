@@ -28,7 +28,7 @@ import com.traceback.TraceBackApp
 import com.traceback.databinding.ActivityMainBinding
 import com.traceback.drive.DriveManager
 import com.traceback.telegram.TelegramNotifier
-import com.traceback.worker.PingWorker
+import com.traceback.service.PingService
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -175,11 +175,11 @@ class MainActivity : AppCompatActivity() {
             prefs.trackingEnabled = isChecked
             if (isChecked) {
                 val interval = prefs.pingIntervalMinutes
-                PingWorker.schedule(this, interval)
-                Toast.makeText(this, "Ping-Überwachung aktiviert (${PingWorker.getIntervalLabel(interval)})", Toast.LENGTH_SHORT).show()
+                PingService.start(this)
+                Toast.makeText(this, "Ping-Überwachung aktiviert (${PingService.getIntervalLabel(interval)})", Toast.LENGTH_SHORT).show()
                 showPingDisclosure(interval)
             } else {
-                PingWorker.cancel(this)
+                PingService.stop(this)
                 Toast.makeText(this, "Ping-Überwachung deaktiviert", Toast.LENGTH_SHORT).show()
             }
             updateStatusIndicators()
@@ -230,8 +230,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setupPingIntervalSpinner(prefs: com.traceback.util.SecurePrefs) {
-        val intervals = PingWorker.INTERVALS
-        val labels = intervals.map { PingWorker.getIntervalLabel(it) }
+        val intervals = PingService.INTERVALS
+        val labels = intervals.map { PingService.getIntervalLabel(it) }
         
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, labels)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -248,8 +248,10 @@ class MainActivity : AppCompatActivity() {
                 if (newInterval != prefs.pingIntervalMinutes) {
                     prefs.pingIntervalMinutes = newInterval
                     if (prefs.trackingEnabled) {
-                        PingWorker.schedule(this@MainActivity, newInterval)
-                        Toast.makeText(this@MainActivity, "Ping-Intervall: ${PingWorker.getIntervalLabel(newInterval)}", Toast.LENGTH_SHORT).show()
+                        // Restart service to pick up new interval
+                        PingService.stop(this@MainActivity)
+                        PingService.start(this@MainActivity)
+                        Toast.makeText(this@MainActivity, "Ping-Intervall: ${PingService.getIntervalLabel(newInterval)}", Toast.LENGTH_SHORT).show()
                     }
                     updatePingIndicator(newInterval)
                 }
@@ -281,7 +283,7 @@ class MainActivity : AppCompatActivity() {
     private fun showPingDisclosure(intervalMinutes: Int) {
         showFeatureNotification(
             "📡 Ping-Überwachung aktiviert",
-            "TraceBack sendet alle ${PingWorker.getIntervalLabel(intervalMinutes)} deinen Standort an Google Drive.\n\n" +
+            "TraceBack sendet alle ${PingService.getIntervalLabel(intervalMinutes)} deinen Standort an Google Drive.\n\n" +
             "📍 Gesammelte Daten:\n" +
             "• GPS-Koordinaten\n" +
             "• Zeitstempel\n\n" +

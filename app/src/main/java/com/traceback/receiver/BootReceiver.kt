@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.traceback.TraceBackApp
+import com.traceback.service.PingService
 import com.traceback.service.TrackingService
 
 /**
@@ -25,10 +26,11 @@ class BootReceiver : BroadcastReceiver() {
             // Only start if tracking was enabled before
             val prefs = TraceBackApp.instance.securePrefs
             if (prefs.trackingEnabled) {
-                Log.i(TAG, "Starting tracking service (was enabled)")
+                Log.i(TAG, "Starting services (was enabled)")
                 TrackingService.start(context)
+                PingService.start(context)
             } else {
-                Log.i(TAG, "Tracking was disabled, not starting service")
+                Log.i(TAG, "Tracking was disabled, not starting services")
             }
         }
     }
