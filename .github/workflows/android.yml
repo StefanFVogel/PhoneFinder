@@ -124,7 +124,18 @@ jobs:
       run: pip install google-api-python-client google-auth
 
     - name: Write credentials file
-      run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > /tmp/gdrive-creds.json
+      env:
+        CREDS: ${{ secrets.GDRIVE_CREDENTIALS }}
+      run: |
+        # Try base64 decode first, otherwise write as-is
+        if echo "$CREDS" | base64 -d > /tmp/gdrive-creds.json 2>/dev/null; then
+          echo "Decoded base64 credentials"
+        else
+          echo "$CREDS" > /tmp/gdrive-creds.json
+          echo "Wrote raw credentials"
+        fi
+        # Verify it's valid JSON
+        python3 -c "import json; json.load(open('/tmp/gdrive-creds.json'))" && echo "Valid JSON ✓" || echo "Invalid JSON!"
 
     - name: Upload Debug APK to Google Drive
       env:
