@@ -142,36 +142,59 @@ jobs:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
         python3 << 'PYEOF'
-        import os, json
+        import os, json, sys, time
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
+        from googleapiclient.errors import HttpError
         from google.oauth2 import service_account
 
-        # Load credentials from file
-        with open('/tmp/gdrive-creds.json', 'r') as f:
-            creds_json = json.load(f)
+        def upload_to_drive(retries=3):
+            # Load credentials from file
+            with open('/tmp/gdrive-creds.json', 'r') as f:
+                creds_json = json.load(f)
+            
+            print(f"Service Account: {creds_json.get('client_email', 'unknown')}")
+            
+            creds = service_account.Credentials.from_service_account_info(creds_json)
+            drive = build('drive', 'v3', credentials=creds)
 
-        creds = service_account.Credentials.from_service_account_info(creds_json)
-        drive = build('drive', 'v3', credentials=creds)
+            folder_id = os.environ['GDRIVE_FOLDER_ID']
+            file_path = 'app/build/outputs/apk/debug/app-debug.apk'
+            file_name = 'TraceBack-Debug.apk'
+            
+            print(f"Folder ID: {folder_id}")
+            print(f"File: {file_path} ({os.path.getsize(file_path)} bytes)")
 
-        folder_id = os.environ['GDRIVE_FOLDER_ID']
-        file_path = 'app/build/outputs/apk/debug/app-debug.apk'
-        file_name = 'TraceBack-Debug.apk'
+            for attempt in range(retries):
+                try:
+                    # Check if exists
+                    query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
+                    results = drive.files().list(q=query, fields="files(id)").execute()
+                    files = results.get('files', [])
 
-        # Check if exists
-        query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
-        results = drive.files().list(q=query, fields="files(id)").execute()
-        files = results.get('files', [])
+                    media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
 
-        media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
+                    if files:
+                        drive.files().update(fileId=files[0]['id'], media_body=media).execute()
+                        print(f"✓ Updated: {file_name}")
+                    else:
+                        meta = {'name': file_name, 'parents': [folder_id]}
+                        drive.files().create(body=meta, media_body=media, fields='id').execute()
+                        print(f"✓ Created: {file_name}")
+                    return True
+                except HttpError as e:
+                    print(f"Attempt {attempt+1} failed: {e.status_code} - {e.reason}")
+                    if attempt < retries - 1:
+                        time.sleep(2 ** attempt)  # Exponential backoff
+                    else:
+                        raise
+            return False
 
-        if files:
-            drive.files().update(fileId=files[0]['id'], media_body=media).execute()
-            print(f"✓ Updated: {file_name}")
-        else:
-            meta = {'name': file_name, 'parents': [folder_id]}
-            drive.files().create(body=meta, media_body=media, fields='id').execute()
-            print(f"✓ Created: {file_name}")
+        try:
+            upload_to_drive()
+        except Exception as e:
+            print(f"❌ Upload failed: {e}")
+            sys.exit(1)
         PYEOF
 
     - name: Upload Release APK to Google Drive
@@ -180,34 +203,45 @@ jobs:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
         python3 << 'PYEOF'
-        import os, json
+        import os, json, sys, time
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
+        from googleapiclient.errors import HttpError
         from google.oauth2 import service_account
 
-        with open('/tmp/gdrive-creds.json', 'r') as f:
-            creds_json = json.load(f)
+        def upload_file(file_path, file_name, retries=3):
+            with open('/tmp/gdrive-creds.json', 'r') as f:
+                creds_json = json.load(f)
+            creds = service_account.Credentials.from_service_account_info(creds_json)
+            drive = build('drive', 'v3', credentials=creds)
+            folder_id = os.environ['GDRIVE_FOLDER_ID']
+            
+            for attempt in range(retries):
+                try:
+                    query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
+                    results = drive.files().list(q=query, fields="files(id)").execute()
+                    files = results.get('files', [])
+                    media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
+                    if files:
+                        drive.files().update(fileId=files[0]['id'], media_body=media).execute()
+                        print(f"✓ Updated: {file_name}")
+                    else:
+                        meta = {'name': file_name, 'parents': [folder_id]}
+                        drive.files().create(body=meta, media_body=media, fields='id').execute()
+                        print(f"✓ Created: {file_name}")
+                    return True
+                except HttpError as e:
+                    print(f"Attempt {attempt+1} failed: {e.status_code} - {e.reason}")
+                    if attempt < retries - 1:
+                        time.sleep(2 ** attempt)
+                    else:
+                        raise
 
-        creds = service_account.Credentials.from_service_account_info(creds_json)
-        drive = build('drive', 'v3', credentials=creds)
-
-        folder_id = os.environ['GDRIVE_FOLDER_ID']
-        file_path = 'app/build/outputs/apk/release/app-release.apk'
-        file_name = 'TraceBack-Release.apk'
-
-        query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
-        results = drive.files().list(q=query, fields="files(id)").execute()
-        files = results.get('files', [])
-
-        media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
-
-        if files:
-            drive.files().update(fileId=files[0]['id'], media_body=media).execute()
-            print(f"✓ Updated: {file_name}")
-        else:
-            meta = {'name': file_name, 'parents': [folder_id]}
-            drive.files().create(body=meta, media_body=media, fields='id').execute()
-            print(f"✓ Created: {file_name}")
+        try:
+            upload_file('app/build/outputs/apk/release/app-release.apk', 'TraceBack-Release.apk')
+        except Exception as e:
+            print(f"❌ Upload failed: {e}")
+            sys.exit(1)
         PYEOF
 
     - name: Upload Release AAB to Google Drive
@@ -216,34 +250,45 @@ jobs:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
         python3 << 'PYEOF'
-        import os, json
+        import os, json, sys, time
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
+        from googleapiclient.errors import HttpError
         from google.oauth2 import service_account
 
-        with open('/tmp/gdrive-creds.json', 'r') as f:
-            creds_json = json.load(f)
+        def upload_file(file_path, file_name, retries=3):
+            with open('/tmp/gdrive-creds.json', 'r') as f:
+                creds_json = json.load(f)
+            creds = service_account.Credentials.from_service_account_info(creds_json)
+            drive = build('drive', 'v3', credentials=creds)
+            folder_id = os.environ['GDRIVE_FOLDER_ID']
+            
+            for attempt in range(retries):
+                try:
+                    query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
+                    results = drive.files().list(q=query, fields="files(id)").execute()
+                    files = results.get('files', [])
+                    media = MediaFileUpload(file_path, mimetype='application/octet-stream', resumable=True)
+                    if files:
+                        drive.files().update(fileId=files[0]['id'], media_body=media).execute()
+                        print(f"✓ Updated: {file_name}")
+                    else:
+                        meta = {'name': file_name, 'parents': [folder_id]}
+                        drive.files().create(body=meta, media_body=media, fields='id').execute()
+                        print(f"✓ Created: {file_name}")
+                    return True
+                except HttpError as e:
+                    print(f"Attempt {attempt+1} failed: {e.status_code} - {e.reason}")
+                    if attempt < retries - 1:
+                        time.sleep(2 ** attempt)
+                    else:
+                        raise
 
-        creds = service_account.Credentials.from_service_account_info(creds_json)
-        drive = build('drive', 'v3', credentials=creds)
-
-        folder_id = os.environ['GDRIVE_FOLDER_ID']
-        file_path = 'app/build/outputs/bundle/release/app-release.aab'
-        file_name = 'TraceBack-Release.aab'
-
-        query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
-        results = drive.files().list(q=query, fields="files(id)").execute()
-        files = results.get('files', [])
-
-        media = MediaFileUpload(file_path, mimetype='application/octet-stream', resumable=True)
-
-        if files:
-            drive.files().update(fileId=files[0]['id'], media_body=media).execute()
-            print(f"✓ Updated: {file_name}")
-        else:
-            meta = {'name': file_name, 'parents': [folder_id]}
-            drive.files().create(body=meta, media_body=media, fields='id').execute()
-            print(f"✓ Created: {file_name}")
+        try:
+            upload_file('app/build/outputs/bundle/release/app-release.aab', 'TraceBack-Release.aab')
+        except Exception as e:
+            print(f"❌ Upload failed: {e}")
+            sys.exit(1)
         PYEOF
 
     - name: Cleanup credentials
