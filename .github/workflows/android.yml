@@ -138,6 +138,7 @@ jobs:
         python3 -c "import json; json.load(open('/tmp/gdrive-creds.json'))" && echo "Valid JSON ✓" || echo "Invalid JSON!"
 
     - name: Upload Debug APK to Google Drive
+      continue-on-error: true
       env:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
@@ -199,6 +200,7 @@ jobs:
 
     - name: Upload Release APK to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
+      continue-on-error: true
       env:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
@@ -246,6 +248,7 @@ jobs:
 
     - name: Upload Release AAB to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
+      continue-on-error: true
       env:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
