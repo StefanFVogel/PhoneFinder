@@ -11,15 +11,15 @@
 
 **Deutsch:**
 ```
-GPS-Tracker mit KML-Export zu Google Drive. Finde dein Handy wieder.
+Sichert deinen Standort bei kritischem Akku – via Google Drive, Telegram & SMS.
 ```
-*(67 Zeichen)*
+*(80 Zeichen)*
 
 **English:**
 ```
-GPS tracker with KML export to Google Drive. Find your phone again.
+Saves your location when battery is critical – via Google Drive, Telegram & SMS.
 ```
-*(67 Zeichen)*
+*(80 Zeichen)*
 
 ---
 
@@ -27,41 +27,35 @@ GPS tracker with KML export to Google Drive. Find your phone again.
 
 **Deutsch:**
 ```
-TraceBack – Dein persönlicher GPS-Tracker
-
-📍 INTELLIGENTES TRACKING
-TraceBack zeichnet deinen Standort intelligent im Hintergrund auf. Die App erkennt automatisch, ob du dich bewegst oder still stehst und passt das Tracking entsprechend an.
-
-• Einstellbarer Erfassungsabstand (50m - 2000m)
-• Automatische Stop-Punkt Erkennung
-• Bewegungserkennung via Activity Recognition
-• Minimaler Akkuverbrauch durch intelligente Intervalle
-
-☁️ GOOGLE DRIVE SYNC
-Alle Tracks werden automatisch als KML-Dateien in deinem Google Drive gespeichert. Öffne sie mit Google Earth oder anderen KML-Viewern.
-
-• Automatische tägliche KML-Dateien
-• Sichtbarer "TraceBack" Ordner in deinem Drive
-• Manuelle Sync-Funktion jederzeit verfügbar
-• Verschlüsselte Übertragung
+TraceBack – Dein letzter bekannter Standort
 
 🚨 LAST BREATH – NOTFALL-FUNKTION
-Das Herzstück von TraceBack: Wenn der Akku kritisch wird, sendet die App automatisch deinen letzten Standort.
+Das Herzstück von TraceBack: Wenn der Akku kritisch wird, sendet die App automatisch deinen letzten Standort an alle konfigurierten Kanäle.
 
-• Telegram-Benachrichtigung mit GPS-Koordinaten
-• lastbreath.kml wird in Google Drive gespeichert
-• Einstellbare Akku-Schwelle (1-20%) für alte Akkus
-• Sichtbare WLANs werden mitgeschickt zur Ortung
-• Fallback auf SMS wenn Telegram nicht erreichbar
+• 4 wählbare Akku-Schwellen: 20%, 10%, 5%, 3%
+• Google Drive: KML + HTML mit eingebetteter Karte
+• Telegram-Benachrichtigung mit GPS-Koordinaten und Maps-Link
+• SMS-Fallback wenn kein Internet verfügbar
+• Sichtbare WLANs werden zur Ortung mitgeschickt
+• Auch bei Geräte-Shutdown wird Last Breath ausgelöst
 
-🧠 SMART TRACKING (Neu!)
-TraceBack lernt deine Gewohnheiten:
+📡 PING-ÜBERWACHUNG
+TraceBack prüft regelmäßig deinen Standort und sendet ihn an Google Drive und Telegram.
 
-• Netzwerk-Fingerprinting erkennt stationäre Orte
-• Automatische Erkennung von Heim-WiFi/Arbeits-WiFi
-• Bluetooth-Geräte als Anker (z.B. Auto-Freisprechanlage)
-• Drift-Warnung wenn sich das Gerät unerwartet bewegt
-• Reduziertes Tracking an bekannten Orten = weniger Akku
+• Einstellbares Intervall: 15 Minuten, 1 Stunde, 5 Stunden, 1 Tag
+• KML + HTML Dateien mit OpenStreetMap-Karte
+• Erkennt wenn Android Berechtigungen entzieht
+• Exaktes Timing auch im Doze-Modus
+
+🔋 LADE-WARNUNG
+Schütze deinen Akku: Optionale Benachrichtigung wenn der Akku beim Laden 80% erreicht. Lithium-Ionen-Akkus leben länger im Bereich 20–80%.
+
+☁️ GOOGLE DRIVE
+Alle Standortdaten werden in einem sichtbaren "TraceBack"-Ordner in deinem Google Drive gespeichert.
+
+• ping.kml / ping.html – Letzter Ping-Standort
+• last_breath_*.kml / .html – Notfall-Standorte
+• HTML-Dateien mit eingebetteter Karte direkt im Browser öffnen
 
 🔒 PRIVACY FIRST
 Deine Daten gehören dir:
@@ -69,59 +63,51 @@ Deine Daten gehören dir:
 • Speicherung NUR in deinem eigenen Google Drive
 • Verschlüsselte lokale Speicherung (EncryptedSharedPreferences)
 • Kein externer Server, keine Tracking-Dienste
-• Master-Schalter AUS = komplett aus, keine Ausnahmen
-• Open Source – prüfe selbst was die App macht
+• Telegram-Token und Chat-ID verschlüsselt gespeichert
+• Jedes Feature erklärt VOR der Berechtigung, warum es diese braucht
 
 ⚙️ WEITERE FEATURES
 
-• Automatischer Start nach Geräte-Neustart
-• Akku-Optimierung deaktivieren (für zuverlässiges Hintergrund-Tracking)
+• Automatischer Neustart nach Geräte-Boot
+• Akku-Optimierung deaktivieren für zuverlässiges Hintergrund-Tracking
 • Übersichtliches Status-Dashboard (🟢🟡🔴)
 • Integrierte Hilfe mit Setup-Anleitungen
-• Data Aging: Alte lokale Daten werden automatisch aufgeräumt
 • Test-Funktion für Last Breath
 
-TraceBack ist Open Source und respektiert deine Privatsphäre. Entwickelt für Menschen, die wissen wollen wo ihr Handy ist – ohne einem fremden Server zu vertrauen.
+TraceBack respektiert deine Privatsphäre. Entwickelt für Menschen, die wissen wollen wo ihr Handy ist – ohne einem fremden Server zu vertrauen.
 ```
-*(2089 Zeichen)*
 
 **English:**
 ```
-TraceBack – Your Personal GPS Tracker
-
-📍 INTELLIGENT TRACKING
-TraceBack records your location intelligently in the background. The app automatically detects whether you're moving or stationary and adjusts tracking accordingly.
-
-• Adjustable tracking distance (50m - 2000m)
-• Automatic stop point detection
-• Motion detection via Activity Recognition
-• Minimal battery usage through smart intervals
-
-☁️ GOOGLE DRIVE SYNC
-All tracks are automatically saved as KML files in your Google Drive. Open them with Google Earth or other KML viewers.
-
-• Automatic daily KML files
-• Visible "TraceBack" folder in your Drive
-• Manual sync available anytime
-• Encrypted transmission
+TraceBack – Your Last Known Location
 
 🚨 LAST BREATH – EMERGENCY FEATURE
-The heart of TraceBack: When battery gets critical, the app automatically sends your last location.
+The heart of TraceBack: When battery gets critical, the app automatically sends your last location to all configured channels.
 
-• Telegram notification with GPS coordinates
-• lastbreath.kml saved to Google Drive
-• Adjustable battery threshold (1-20%) for old batteries
+• 4 selectable battery thresholds: 20%, 10%, 5%, 3%
+• Google Drive: KML + HTML with embedded map
+• Telegram notification with GPS coordinates and Maps link
+• SMS fallback when no internet available
 • Visible WiFi networks included for location help
-• SMS fallback if Telegram unavailable
+• Last Breath also triggers on device shutdown
 
-🧠 SMART TRACKING (New!)
-TraceBack learns your habits:
+📡 PING MONITORING
+TraceBack regularly checks your location and sends it to Google Drive and Telegram.
 
-• Network fingerprinting detects stationary locations
-• Auto-detection of home/work WiFi
-• Bluetooth devices as anchors (e.g., car hands-free)
-• Drift warning if device moves unexpectedly
-• Reduced tracking at known locations = less battery
+• Configurable interval: 15 minutes, 1 hour, 5 hours, 1 day
+• KML + HTML files with OpenStreetMap map
+• Detects when Android revokes permissions
+• Exact timing even in Doze mode
+
+🔋 CHARGING ALERT
+Protect your battery: Optional notification when battery reaches 80% while charging. Lithium-ion batteries last longer in the 20–80% range.
+
+☁️ GOOGLE DRIVE
+All location data is stored in a visible "TraceBack" folder in your Google Drive.
+
+• ping.kml / ping.html – Last ping location
+• last_breath_*.kml / .html – Emergency locations
+• HTML files with embedded map viewable directly in browser
 
 🔒 PRIVACY FIRST
 Your data belongs to you:
@@ -129,21 +115,19 @@ Your data belongs to you:
 • Storage ONLY in your own Google Drive
 • Encrypted local storage (EncryptedSharedPreferences)
 • No external server, no tracking services
-• Master switch OFF = completely off, no exceptions
-• Open source – verify what the app does
+• Telegram token and chat ID stored encrypted
+• Each feature explains WHY it needs a permission before requesting it
 
 ⚙️ MORE FEATURES
 
-• Auto-start after device reboot
-• Disable battery optimization (for reliable background tracking)
+• Auto-restart after device reboot
+• Disable battery optimization for reliable background tracking
 • Clear status dashboard (🟢🟡🔴)
 • Built-in help with setup guides
-• Data aging: Old local data cleaned up automatically
 • Test function for Last Breath
 
-TraceBack is open source and respects your privacy. Built for people who want to know where their phone is – without trusting a foreign server.
+TraceBack respects your privacy. Built for people who want to know where their phone is – without trusting a foreign server.
 ```
-*(1967 Zeichen)*
 
 ---
 
@@ -156,5 +140,5 @@ TraceBack is open source and respects your privacy. Built for people who want to
 ## Tags/Keywords
 
 ```
-gps tracker, kml, google drive, find my phone, location tracker, gps logger, track phone, backup location, last breath, emergency tracker, privacy, open source
+gps tracker, kml, google drive, find my phone, location tracker, gps logger, track phone, backup location, last breath, emergency tracker, privacy, battery alert
 ```

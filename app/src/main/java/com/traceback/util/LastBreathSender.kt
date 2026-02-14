@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
@@ -361,7 +362,12 @@ Zeit: $dateStr$wifiInfo</description>
         }
         
         return try {
-            val smsManager = android.telephony.SmsManager.getDefault()
+            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(android.telephony.SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                android.telephony.SmsManager.getDefault()
+            }
             val parts = smsManager.divideMessage(message)
             smsManager.sendMultipartTextMessage(number, null, parts, null, null)
             true

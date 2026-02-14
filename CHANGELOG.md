@@ -1,5 +1,29 @@
 # TraceBack Changelog
 
+## v1.5.0 (versionCode 10) - 2026-02-14
+
+### Neue Features
+- **Lade-Warnung bei 80%**: Optionale Benachrichtigung wenn Akku beim Laden 80% erreicht
+  - Schützt Akku-Lebensdauer (Lithium-Ionen-Akkus bevorzugen 20-80%)
+  - Separater Schalter, unabhängig von Last Breath
+  - Hysterese bei 75% verhindert wiederholte Benachrichtigungen
+- **Neue Last Breath Schwellen**: 20%, 10%, 5%, 3%
+  - Vereinfacht auf 4 klare Schwellen (ersetzt alte 15%, 8%, 4%, 2%)
+
+### Verbesserungen
+- SmsManager-Fix: Nutzt context.getSystemService() ab Android 12 statt deprecated getDefault()
+- Verbesserte Schwellen-Reset-Logik: Höherer Puffer bei hohen Schwellen (10% statt 5%)
+- Batterie-Logik in testbares BatteryThresholdChecker-Objekt extrahiert
+
+### Code-Qualität
+- Entfernt deprecated lastBreathThreshold (singular) aus SecurePrefs
+- Entfernt toten Code: service/BootReceiver.kt (Duplikat von receiver/BootReceiver.kt)
+- README.md komplett überarbeitet (falsche Feature-Beschreibungen korrigiert)
+- Hilfe-Texte für alle neuen Schwellen aktualisiert
+- 22 neue Unit-Tests für BatteryThresholdChecker
+
+---
+
 ## v1.4.0 (versionCode 9) - 2026-02-13
 
 ### Neue Features

@@ -16,7 +16,7 @@ import androidx.core.app.NotificationCompat
 import com.traceback.R
 import com.traceback.TraceBackApp
 import com.traceback.ui.MainActivity
-// PingWorker removed - now handled by PingService
+import com.traceback.util.BatteryThresholdChecker
 import kotlinx.coroutines.*
 
 /**
@@ -45,14 +45,19 @@ class TrackingService : Service() {
     
     // Track which thresholds have already triggered to avoid duplicate alerts
     private val triggeredThresholds = mutableSetOf<Int>()
+    private var chargingAlertTriggered = false
     
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
             val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
             val percentage = (level * 100 / scale.toFloat()).toInt()
-            
-            checkBatteryThresholds(percentage)
+
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
+
+            checkBatteryThresholds(percentage, isCharging)
         }
     }
     
@@ -83,30 +88,41 @@ class TrackingService : Service() {
     
     override fun onBind(intent: Intent?): IBinder? = null
     
-    private fun checkBatteryThresholds(currentPercentage: Int) {
+    private fun checkBatteryThresholds(currentPercentage: Int, isCharging: Boolean) {
         val prefs = TraceBackApp.instance.securePrefs
+
+        // --- Charging alert (battery health) ---
+        if (BatteryThresholdChecker.shouldShowChargingAlert(
+                currentPercentage, isCharging, prefs.chargingAlertEnabled, chargingAlertTriggered
+            )) {
+            Log.i(TAG, "Battery at $currentPercentage% while charging - alert!")
+            chargingAlertTriggered = true
+            showChargingAlert(currentPercentage)
+        }
+        if (BatteryThresholdChecker.shouldResetChargingAlert(currentPercentage)) {
+            chargingAlertTriggered = false
+        }
+
+        // --- Last Breath thresholds ---
         val thresholds = prefs.lastBreathThresholds
-        
+
         if (thresholds.isEmpty()) {
             Log.d(TAG, "No thresholds configured")
             return
         }
-        
-        // Check each threshold
-        for (threshold in thresholds.sortedDescending()) {
-            if (currentPercentage <= threshold && !triggeredThresholds.contains(threshold)) {
-                Log.w(TAG, "Battery at $currentPercentage%, threshold $threshold% reached!")
-                triggeredThresholds.add(threshold)
-                triggerLastBreath("Akku kritisch: $currentPercentage% (Schwelle: $threshold%)")
-                break // Only trigger one at a time
-            }
+
+        val triggered = BatteryThresholdChecker.findTriggeredThreshold(
+            currentPercentage, thresholds, triggeredThresholds
+        )
+        if (triggered != null) {
+            Log.w(TAG, "Battery at $currentPercentage%, threshold $triggered% reached!")
+            triggeredThresholds.add(triggered)
+            triggerLastBreath("Akku kritisch: $currentPercentage% (Schwelle: $triggered%)")
         }
-        
-        // Reset triggers when battery is charged above highest configured threshold + 5%
-        val highestThreshold = thresholds.maxOrNull() ?: 15
-        if (currentPercentage > highestThreshold + 5) {
+
+        if (BatteryThresholdChecker.shouldResetTriggers(currentPercentage, thresholds)) {
             if (triggeredThresholds.isNotEmpty()) {
-                Log.i(TAG, "Battery charged above ${highestThreshold + 5}%, resetting triggers")
+                Log.i(TAG, "Battery charged, resetting triggers")
                 triggeredThresholds.clear()
             }
         }
@@ -136,7 +152,19 @@ class TrackingService : Service() {
         }
     }
     
-    // All Last Breath logic moved to LastBreathSender for consistency
+    private fun showChargingAlert(percentage: Int) {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        val notification = NotificationCompat.Builder(this, TraceBackApp.CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_tracking)
+            .setContentTitle("Akku bei $percentage% – Ladegerät trennen")
+            .setContentText("Für optimale Akku-Lebensdauer bei 80% vom Ladegerät trennen.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(4, notification)
+    }
     
     private fun showLocationSentNotification(reason: String, location: Location?, success: Boolean) {
         val notificationManager = getSystemService(NotificationManager::class.java)

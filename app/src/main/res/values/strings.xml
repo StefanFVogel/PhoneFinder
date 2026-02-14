@@ -24,8 +24,11 @@
     <string name="help_battery_title">🔋 Akku-Optimierung</string>
     <string name="help_battery_description">Android beendet Apps im Hintergrund, um Akku zu sparen. Damit TraceBack zuverlässig funktioniert, muss die Akku-Optimierung für diese App deaktiviert werden.\n\nDer Button öffnet die Android-Einstellungen, wo du TraceBack von der Optimierung ausschließen kannst.</string>
     
+    <string name="help_charging_alert_title">🔋 Lade-Warnung</string>
+    <string name="help_charging_alert_description" formatted="false">Wenn aktiviert, wirst du benachrichtigt sobald der Akku beim Laden 80% erreicht.\n\nWarum? Lithium-Ionen-Akkus altern schneller wenn sie ständig auf 100% geladen werden. Ideal ist ein Ladebereich von 20–80%.\n\nDies ist KEINE Last Breath Funktion – es wird kein Standort gesendet, nur eine lokale Benachrichtigung angezeigt.</string>
+
     <string name="help_lastbreath_title">🚨 Last Breath</string>
-    <string name="help_lastbreath_description">Die \"Last Breath\"-Funktion ist das Herzstück von TraceBack:\n\nWenn der Akku unter eine eingestellte Schwelle fällt, sendet die App automatisch deinen letzten bekannten Standort an alle konfigurierten Kanäle.\n\n⚡ Schwellen wählen:\n• 15% = Frühe Warnung\n• 8% = Standard\n• 4% = Kritisch\n• 2% = Letzte Chance\n\nMehrere Schwellen können gleichzeitig aktiv sein.\n\nMit \"Last Breath testen\" kannst du prüfen, ob alles korrekt eingerichtet ist.</string>
+    <string name="help_lastbreath_description" formatted="false">Die \"Last Breath\"-Funktion ist das Herzstück von TraceBack:\n\nWenn der Akku unter eine eingestellte Schwelle fällt, sendet die App automatisch deinen letzten bekannten Standort an alle konfigurierten Kanäle.\n\n⚡ Schwellen wählen:\n• 20% = Frühe Warnung\n• 10% = Niedrig\n• 5% = Kritisch\n• 3% = Fast leer\n\nMehrere Schwellen können gleichzeitig aktiv sein.\n\nMit \"Last Breath testen\" kannst du prüfen, ob alles korrekt eingerichtet ist.</string>
     
     <string name="help_sms_title">📱 Notfall-SMS</string>
     <string name="help_sms_description">Als Fallback zu Telegram kannst du eine Notfall-SMS-Nummer einrichten.\n\nWenn Telegram nicht erreichbar ist (kein Internet), wird eine SMS mit deinem Standort an diese Nummer gesendet.\n\n• Funktioniert ohne Internet\n• Internationale Nummern mit + Vorwahl\n• Kann leer gelassen werden wenn nicht benötigt</string>

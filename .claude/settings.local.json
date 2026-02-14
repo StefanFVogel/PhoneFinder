@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew :jvm-tests:test:*)",
+      "Bash(export:*)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\" PATH=\"/c/Program Files/Android/Android Studio/jbr/bin:$PATH\" ./gradlew:*)",
+      "WebSearch",
+      "WebFetch(domain:support.google.com)",
+      "WebFetch(domain:www.iubenda.com)",
+      "WebFetch(domain:radar.com)",
+      "WebFetch(domain:transistorsoft.medium.com)",
+      "WebFetch(domain:www.termsfeed.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:docs.sentiance.com)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(./gradlew:*)"
+    ]
+  }
+}

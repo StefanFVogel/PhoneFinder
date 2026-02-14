@@ -26,7 +26,7 @@
         android:id="@+id/text_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="TraceBack benötigt Zugriff auf Ihren Standort im Hintergrund.\n\nDies ermöglicht es der App, Ihre Position bei kritischem Akkustand zu sichern, selbst wenn Sie die App gerade nicht aktiv nutzen oder der Bildschirm ausgeschaltet ist.\n\nSie können dies jederzeit in den Einstellungen ändern."
+        android:text="TraceBack erhebt Standortdaten, um die Funktionen Ping-Überwachung und Last Breath bereitzustellen – auch wenn die App geschlossen oder nicht in Verwendung ist.\n\nDies ermöglicht es der App, Ihre Position bei kritischem Akkustand zu sichern, selbst wenn der Bildschirm ausgeschaltet ist.\n\nSie können dies jederzeit in den Android-Einstellungen widerrufen."
         android:textSize="14sp"
         android:lineSpacingExtra="4dp" />
 

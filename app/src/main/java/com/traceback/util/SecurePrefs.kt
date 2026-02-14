@@ -30,9 +30,9 @@ class SecurePrefs(context: Context) {
         private const val KEY_TRACKING_DISTANCE_METERS = "tracking_distance_m"
         private const val KEY_TRACKING_ENABLED = "tracking_enabled"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_ts"
-        private const val KEY_LAST_BREATH_THRESHOLD = "last_breath_threshold"
         private const val KEY_LAST_BREATH_THRESHOLDS = "last_breath_thresholds"
         private const val KEY_PING_INTERVAL_MINUTES = "ping_interval_minutes"
+        private const val KEY_CHARGING_ALERT_ENABLED = "charging_alert_enabled"
     }
     
     // Telegram Configuration
@@ -57,12 +57,7 @@ class SecurePrefs(context: Context) {
         get() = prefs.getBoolean(KEY_TRACKING_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_TRACKING_ENABLED, value).apply()
     
-    // Last Breath threshold (1-20%, default 5%) - DEPRECATED, use lastBreathThresholds
-    var lastBreathThreshold: Int
-        get() = prefs.getInt(KEY_LAST_BREATH_THRESHOLD, 5)
-        set(value) = prefs.edit().putInt(KEY_LAST_BREATH_THRESHOLD, value.coerceIn(1, 20)).apply()
-    
-    // Last Breath thresholds as Set (15, 8, 4, 2)
+    // Last Breath thresholds as Set (20, 10, 5, 3)
     var lastBreathThresholds: Set<Int>
         get() {
             val stringSet = prefs.getStringSet(KEY_LAST_BREATH_THRESHOLDS, null)
@@ -82,6 +77,11 @@ class SecurePrefs(context: Context) {
     var pingIntervalMinutes: Int
         get() = prefs.getInt(KEY_PING_INTERVAL_MINUTES, 60) // Default: 1 hour
         set(value) = prefs.edit().putInt(KEY_PING_INTERVAL_MINUTES, value).apply()
+
+    // Charging alert at 80% (battery longevity)
+    var chargingAlertEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CHARGING_ALERT_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_CHARGING_ALERT_ENABLED, value).apply()
     
     fun isConfiguredForEmergency(): Boolean {
         return !telegramBotToken.isNullOrBlank() && !telegramChatId.isNullOrBlank()

@@ -125,6 +125,22 @@
             android:textColor="?android:textColorSecondary"
             android:layout_marginBottom="16dp" />
 
+        <!-- Charging Alert -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_charging_alert_title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/help_charging_alert_description"
+            android:textColor="?android:textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
         <!-- Last Breath -->
         <TextView
             android:layout_width="wrap_content"

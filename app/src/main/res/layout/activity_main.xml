@@ -331,6 +331,59 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- ==================== -->
+        <!-- 2.5 LADE-WARNUNG (80%) -->
+        <!-- ==================== -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/indicator_charging_alert"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/indicator_yellow" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Lade-Warnung 80%"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="12dp" />
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_charging_alert"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Erinnert dich, das Ladegerät bei 80% zu trennen (Akku-Schonung)"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ==================== -->
         <!-- 3. LAST BREATH SCHWELLE -->
         <!-- ==================== -->
         <com.google.android.material.card.MaterialCardView
@@ -382,31 +435,31 @@
                     android:gravity="center">
 
                     <CheckBox
-                        android:id="@+id/checkbox15"
+                        android:id="@+id/checkbox20"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="15%"
+                        android:text="20%"
                         android:layout_marginEnd="8dp" />
 
                     <CheckBox
-                        android:id="@+id/checkbox8"
+                        android:id="@+id/checkbox10"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="8%"
+                        android:text="10%"
                         android:layout_marginEnd="8dp" />
 
                     <CheckBox
-                        android:id="@+id/checkbox4"
+                        android:id="@+id/checkbox5"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="4%"
+                        android:text="5%"
                         android:layout_marginEnd="8dp" />
 
                     <CheckBox
-                        android:id="@+id/checkbox2"
+                        android:id="@+id/checkbox3"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="2%" />
+                        android:text="3%" />
                 </LinearLayout>
 
             </LinearLayout>

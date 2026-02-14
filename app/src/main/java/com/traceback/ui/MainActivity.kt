@@ -185,27 +185,42 @@ class MainActivity : AppCompatActivity() {
             updateStatusIndicators()
         }
         
+        // === CHARGING ALERT ===
+        binding.switchChargingAlert.isChecked = prefs.chargingAlertEnabled
+        binding.switchChargingAlert.setOnCheckedChangeListener { _, isChecked ->
+            prefs.chargingAlertEnabled = isChecked
+            updateChargingAlertIndicator()
+            if (isChecked) {
+                showFeatureNotification(
+                    "Lade-Warnung aktiviert",
+                    "Du wirst benachrichtigt wenn der Akku beim Laden 80% erreicht.\n\n" +
+                    "Lithium-Ionen-Akkus leben länger wenn sie nicht über 80% geladen werden."
+                )
+            }
+        }
+        updateChargingAlertIndicator()
+
         // === PING INTERVAL SPINNER ===
         setupPingIntervalSpinner(prefs)
         
         // === LAST BREATH THRESHOLD CHECKBOXES ===
         
         val savedThresholds = prefs.lastBreathThresholds
-        binding.checkbox15.isChecked = savedThresholds.contains(15)
-        binding.checkbox8.isChecked = savedThresholds.contains(8)
-        binding.checkbox4.isChecked = savedThresholds.contains(4)
-        binding.checkbox2.isChecked = savedThresholds.contains(2)
-        
+        binding.checkbox20.isChecked = savedThresholds.contains(20)
+        binding.checkbox10.isChecked = savedThresholds.contains(10)
+        binding.checkbox5.isChecked = savedThresholds.contains(5)
+        binding.checkbox3.isChecked = savedThresholds.contains(3)
+
         val checkboxListener = { _: android.widget.CompoundButton, _: Boolean ->
             saveThresholds()
             updateLastBreathIndicator()
             showThresholdNotification()
         }
-        
-        binding.checkbox15.setOnCheckedChangeListener(checkboxListener)
-        binding.checkbox8.setOnCheckedChangeListener(checkboxListener)
-        binding.checkbox4.setOnCheckedChangeListener(checkboxListener)
-        binding.checkbox2.setOnCheckedChangeListener(checkboxListener)
+
+        binding.checkbox20.setOnCheckedChangeListener(checkboxListener)
+        binding.checkbox10.setOnCheckedChangeListener(checkboxListener)
+        binding.checkbox5.setOnCheckedChangeListener(checkboxListener)
+        binding.checkbox3.setOnCheckedChangeListener(checkboxListener)
         
         updateLastBreathIndicator()
         
@@ -222,10 +237,10 @@ class MainActivity : AppCompatActivity() {
     
     private fun saveThresholds() {
         val thresholds = mutableSetOf<Int>()
-        if (binding.checkbox15.isChecked) thresholds.add(15)
-        if (binding.checkbox8.isChecked) thresholds.add(8)
-        if (binding.checkbox4.isChecked) thresholds.add(4)
-        if (binding.checkbox2.isChecked) thresholds.add(2)
+        if (binding.checkbox20.isChecked) thresholds.add(20)
+        if (binding.checkbox10.isChecked) thresholds.add(10)
+        if (binding.checkbox5.isChecked) thresholds.add(5)
+        if (binding.checkbox3.isChecked) thresholds.add(3)
         TraceBackApp.instance.securePrefs.lastBreathThresholds = thresholds
     }
     
@@ -308,19 +323,24 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun updateLastBreathIndicator() {
-        val has15 = binding.checkbox15.isChecked
-        val has8 = binding.checkbox8.isChecked
-        val has4 = binding.checkbox4.isChecked
-        val has2 = binding.checkbox2.isChecked
-        val count = listOf(has15, has8, has4, has2).count { it }
-        
-        // Logic: 0 = Red, only 2% = Yellow, otherwise Green
+        val thresholds = TraceBackApp.instance.securePrefs.lastBreathThresholds
+        val count = thresholds.size
+
+        // Logic: 0 = Red, only lowest threshold = Yellow, 2+ = Green
         binding.indicatorLastBreath.setImageResource(
             when {
                 count == 0 -> R.drawable.indicator_red
-                count == 1 && has2 && !has15 && !has8 && !has4 -> R.drawable.indicator_yellow
-                else -> R.drawable.indicator_green
+                count == 1 && thresholds.contains(3) -> R.drawable.indicator_yellow
+                count >= 2 -> R.drawable.indicator_green
+                else -> R.drawable.indicator_yellow
             }
+        )
+    }
+
+    private fun updateChargingAlertIndicator() {
+        val enabled = TraceBackApp.instance.securePrefs.chargingAlertEnabled
+        binding.indicatorChargingAlert.setImageResource(
+            if (enabled) R.drawable.indicator_green else R.drawable.indicator_yellow
         )
     }
     
@@ -369,11 +389,19 @@ class MainActivity : AppCompatActivity() {
                 
                 AlertDialog.Builder(this)
                     .setTitle("Hintergrund-Standort")
-                    .setMessage("Für die Last Breath Funktion benötigt TraceBack die Berechtigung 'Immer erlauben'.\n\nDies ermöglicht es der App, Ihren Standort auch bei geschlossener App zu sichern, wenn der Akku kritisch wird.")
+                    .setMessage(
+                        "TraceBack erhebt Standortdaten im Hintergrund, auch wenn die App geschlossen oder nicht in Verwendung ist.\n\n" +
+                        "Funktionen die Hintergrund-Standort nutzen:\n" +
+                        "• Last Breath: Sichert Position bei kritischem Akkustand\n" +
+                        "• Ping: Regelmäßige Standort-Prüfung\n\n" +
+                        "Erhobene Daten:\n" +
+                        "• GPS-Koordinaten, Zeitstempel, sichtbare WLANs\n\n" +
+                        "Bitte wähle in den Einstellungen \"Immer erlauben\"."
+                    )
                     .setPositiveButton("Einstellungen öffnen") { _, _ ->
                         backgroundLocationRequest.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
-                    .setNegativeButton("Abbrechen", null)
+                    .setNegativeButton("Ablehnen", null)
                     .show()
             }
         }
