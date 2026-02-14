@@ -138,12 +138,13 @@ jobs:
         python3 -c "import json; json.load(open('/tmp/gdrive-creds.json'))" && echo "Valid JSON ✓" || echo "Invalid JSON!"
 
     - name: Upload Debug APK to Google Drive
+      id: gdrive_upload
       continue-on-error: true
       env:
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       run: |
-        python3 << 'PYEOF'
-        import os, json, sys, time
+        python3 << 'PYEOF' 2>&1 | tee /tmp/gdrive-debug.log
+        import os, json, sys, time, traceback
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from googleapiclient.errors import HttpError
@@ -151,24 +152,60 @@ jobs:
 
         def upload_to_drive(retries=3):
             # Load credentials from file
-            with open('/tmp/gdrive-creds.json', 'r') as f:
-                creds_json = json.load(f)
+            print("=== GOOGLE DRIVE DEBUG ===")
             
-            print(f"Service Account: {creds_json.get('client_email', 'unknown')}")
+            try:
+                with open('/tmp/gdrive-creds.json', 'r') as f:
+                    creds_json = json.load(f)
+                print(f"✓ Credentials loaded")
+                print(f"  Service Account: {creds_json.get('client_email', 'MISSING')}")
+                print(f"  Project ID: {creds_json.get('project_id', 'MISSING')}")
+            except Exception as e:
+                print(f"❌ Failed to load credentials: {e}")
+                raise
             
-            creds = service_account.Credentials.from_service_account_info(creds_json)
-            drive = build('drive', 'v3', credentials=creds)
-
-            folder_id = os.environ['GDRIVE_FOLDER_ID']
+            folder_id = os.environ.get('GDRIVE_FOLDER_ID', '')
+            print(f"  Folder ID: {folder_id[:20]}..." if len(folder_id) > 20 else f"  Folder ID: {folder_id}")
+            
+            if not folder_id:
+                print("❌ GDRIVE_FOLDER_ID is empty!")
+                raise ValueError("Missing GDRIVE_FOLDER_ID")
+            
             file_path = 'app/build/outputs/apk/debug/app-debug.apk'
             file_name = 'TraceBack-Debug.apk'
             
-            print(f"Folder ID: {folder_id}")
-            print(f"File: {file_path} ({os.path.getsize(file_path)} bytes)")
+            if not os.path.exists(file_path):
+                print(f"❌ File not found: {file_path}")
+                raise FileNotFoundError(file_path)
+            
+            print(f"  File: {file_path} ({os.path.getsize(file_path)} bytes)")
+            
+            try:
+                creds = service_account.Credentials.from_service_account_info(creds_json)
+                print("✓ Credentials validated")
+            except Exception as e:
+                print(f"❌ Invalid credentials: {e}")
+                raise
+            
+            try:
+                drive = build('drive', 'v3', credentials=creds)
+                print("✓ Drive API client created")
+            except Exception as e:
+                print(f"❌ Failed to create Drive client: {e}")
+                raise
 
             for attempt in range(retries):
                 try:
-                    # Check if exists
+                    print(f"\n--- Attempt {attempt+1}/{retries} ---")
+                    
+                    # Test: List files in folder
+                    print("Testing folder access...")
+                    query = f"'{folder_id}' in parents and trashed = false"
+                    results = drive.files().list(q=query, fields="files(id,name)", pageSize=5).execute()
+                    existing = results.get('files', [])
+                    print(f"✓ Folder accessible, {len(existing)} files found")
+                    
+                    # Check if our file exists
                     query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
                     results = drive.files().list(q=query, fields="files(id)").execute()
                     files = results.get('files', [])
@@ -176,27 +213,46 @@ jobs:
                     media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
 
                     if files:
+                        print(f"Updating existing file (id: {files[0]['id']})...")
                         drive.files().update(fileId=files[0]['id'], media_body=media).execute()
                         print(f"✓ Updated: {file_name}")
                     else:
+                        print("Creating new file...")
                         meta = {'name': file_name, 'parents': [folder_id]}
-                        drive.files().create(body=meta, media_body=media, fields='id').execute()
-                        print(f"✓ Created: {file_name}")
+                        result = drive.files().create(body=meta, media_body=media, fields='id').execute()
+                        print(f"✓ Created: {file_name} (id: {result['id']})")
                     return True
+                    
                 except HttpError as e:
-                    print(f"Attempt {attempt+1} failed: {e.status_code} - {e.reason}")
+                    print(f"❌ HTTP Error {e.status_code}: {e.reason}")
+                    print(f"   Details: {e.error_details if hasattr(e, 'error_details') else 'none'}")
                     if attempt < retries - 1:
-                        time.sleep(2 ** attempt)  # Exponential backoff
+                        wait = 2 ** attempt
+                        print(f"   Retrying in {wait}s...")
+                        time.sleep(wait)
                     else:
                         raise
+                except Exception as e:
+                    print(f"❌ Error: {type(e).__name__}: {e}")
+                    traceback.print_exc()
+                    raise
             return False
 
         try:
             upload_to_drive()
+            print("\n=== SUCCESS ===")
         except Exception as e:
-            print(f"❌ Upload failed: {e}")
+            print(f"\n=== FAILED: {e} ===")
             sys.exit(1)
         PYEOF
+
+    - name: Upload Drive debug log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gdrive-debug-log
+        path: /tmp/gdrive-debug.log
+        retention-days: 7
 
     - name: Upload Release APK to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
