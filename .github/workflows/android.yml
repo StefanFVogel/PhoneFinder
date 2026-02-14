@@ -114,62 +114,40 @@ jobs:
         path: app/build/outputs/bundle/release/*.aab
         retention-days: 90
 
-    # === GOOGLE DRIVE UPLOAD (Python) ===
+    # === GOOGLE DRIVE UPLOAD ===
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: '3.11'
 
     - name: Install Google Dependencies
-      run: pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+      run: pip install google-api-python-client google-auth
+
+    - name: Write credentials file
+      run: echo '${{ secrets.GDRIVE_CREDENTIALS }}' > /tmp/gdrive-creds.json
 
     - name: Upload Debug APK to Google Drive
       env:
-        GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-        FILE_PATH: "app/build/outputs/apk/debug/app-debug.apk"
-        FILE_NAME: "TraceBack-Debug.apk"
       run: |
         python3 << 'PYEOF'
-        import os, json, base64, sys
-
-        creds_raw = os.environ.get('GDRIVE_CREDENTIALS', '')
-        folder_id = os.environ.get('GDRIVE_FOLDER_ID', '')
-        file_path = os.environ.get('FILE_PATH', '')
-        file_name = os.environ.get('FILE_NAME', '')
-
-        print(f"Credentials length: {len(creds_raw)}")
-        print(f"Folder ID: {folder_id}")
-        print(f"File path: {file_path}")
-        print(f"File name: {file_name}")
-
-        if not creds_raw:
-            print("ERROR: GDRIVE_CREDENTIALS is empty!")
-            sys.exit(1)
-
-        # Try base64 decode first
-        creds_json = None
-        try:
-            decoded = base64.b64decode(creds_raw).decode('utf-8')
-            creds_json = json.loads(decoded)
-            print("Credentials: base64 decoded successfully")
-        except Exception as e1:
-            print(f"Base64 decode failed: {e1}")
-            try:
-                creds_json = json.loads(creds_raw)
-                print("Credentials: raw JSON parsed successfully")
-            except Exception as e2:
-                print(f"Raw JSON parse failed: {e2}")
-                print(f"First 50 chars: {creds_raw[:50]}...")
-                sys.exit(1)
-
+        import os, json
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
+        # Load credentials from file
+        with open('/tmp/gdrive-creds.json', 'r') as f:
+            creds_json = json.load(f)
+
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
 
+        folder_id = os.environ['GDRIVE_FOLDER_ID']
+        file_path = 'app/build/outputs/apk/debug/app-debug.apk'
+        file_name = 'TraceBack-Debug.apk'
+
+        # Check if exists
         query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
         results = drive.files().list(q=query, fields="files(id)").execute()
         files = results.get('files', [])
@@ -177,41 +155,34 @@ jobs:
         media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
 
         if files:
-            file_id = files[0]['id']
-            drive.files().update(fileId=file_id, media_body=media).execute()
-            print(f"Updated: {file_name} ({file_id})")
+            drive.files().update(fileId=files[0]['id'], media_body=media).execute()
+            print(f"✓ Updated: {file_name}")
         else:
             meta = {'name': file_name, 'parents': [folder_id]}
-            f = drive.files().create(body=meta, media_body=media, fields='id').execute()
-            print(f"Created: {file_name} ({f.get('id')})")
+            drive.files().create(body=meta, media_body=media, fields='id').execute()
+            print(f"✓ Created: {file_name}")
         PYEOF
 
     - name: Upload Release APK to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
       env:
-        GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-        FILE_PATH: "app/build/outputs/apk/release/app-release.apk"
-        FILE_NAME: "TraceBack-Release.apk"
       run: |
-        python - <<'PYEOF'
-        import os, json, base64
+        python3 << 'PYEOF'
+        import os, json
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
-        creds_raw = os.environ['GDRIVE_CREDENTIALS']
-        try:
-            creds_json = json.loads(base64.b64decode(creds_raw).decode('utf-8'))
-        except:
-            creds_json = json.loads(creds_raw)
+        with open('/tmp/gdrive-creds.json', 'r') as f:
+            creds_json = json.load(f)
 
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
 
         folder_id = os.environ['GDRIVE_FOLDER_ID']
-        file_path = os.environ['FILE_PATH']
-        file_name = os.environ['FILE_NAME']
+        file_path = 'app/build/outputs/apk/release/app-release.apk'
+        file_name = 'TraceBack-Release.apk'
 
         query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
         results = drive.files().list(q=query, fields="files(id)").execute()
@@ -220,41 +191,34 @@ jobs:
         media = MediaFileUpload(file_path, mimetype='application/vnd.android.package-archive', resumable=True)
 
         if files:
-            file_id = files[0]['id']
-            drive.files().update(fileId=file_id, media_body=media).execute()
-            print(f"Updated: {file_name} ({file_id})")
+            drive.files().update(fileId=files[0]['id'], media_body=media).execute()
+            print(f"✓ Updated: {file_name}")
         else:
             meta = {'name': file_name, 'parents': [folder_id]}
-            f = drive.files().create(body=meta, media_body=media, fields='id').execute()
-            print(f"Created: {file_name} ({f.get('id')})")
+            drive.files().create(body=meta, media_body=media, fields='id').execute()
+            print(f"✓ Created: {file_name}")
         PYEOF
 
     - name: Upload Release AAB to Google Drive
       if: env.HAVE_RELEASE_KEY == 'true'
       env:
-        GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
         GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
-        FILE_PATH: "app/build/outputs/bundle/release/app-release.aab"
-        FILE_NAME: "TraceBack-Release.aab"
       run: |
-        python - <<'PYEOF'
-        import os, json, base64
+        python3 << 'PYEOF'
+        import os, json
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
-        creds_raw = os.environ['GDRIVE_CREDENTIALS']
-        try:
-            creds_json = json.loads(base64.b64decode(creds_raw).decode('utf-8'))
-        except:
-            creds_json = json.loads(creds_raw)
+        with open('/tmp/gdrive-creds.json', 'r') as f:
+            creds_json = json.load(f)
 
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
 
         folder_id = os.environ['GDRIVE_FOLDER_ID']
-        file_path = os.environ['FILE_PATH']
-        file_name = os.environ['FILE_NAME']
+        file_path = 'app/build/outputs/bundle/release/app-release.aab'
+        file_name = 'TraceBack-Release.aab'
 
         query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
         results = drive.files().list(q=query, fields="files(id)").execute()
@@ -263,11 +227,14 @@ jobs:
         media = MediaFileUpload(file_path, mimetype='application/octet-stream', resumable=True)
 
         if files:
-            file_id = files[0]['id']
-            drive.files().update(fileId=file_id, media_body=media).execute()
-            print(f"Updated: {file_name} ({file_id})")
+            drive.files().update(fileId=files[0]['id'], media_body=media).execute()
+            print(f"✓ Updated: {file_name}")
         else:
             meta = {'name': file_name, 'parents': [folder_id]}
-            f = drive.files().create(body=meta, media_body=media, fields='id').execute()
-            print(f"Created: {file_name} ({f.get('id')})")
+            drive.files().create(body=meta, media_body=media, fields='id').execute()
+            print(f"✓ Created: {file_name}")
         PYEOF
+
+    - name: Cleanup credentials
+      if: always()
+      run: rm -f /tmp/gdrive-creds.json
