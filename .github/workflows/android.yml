@@ -130,27 +130,45 @@ jobs:
         FILE_PATH: "app/build/outputs/apk/debug/app-debug.apk"
         FILE_NAME: "TraceBack-Debug.apk"
       run: |
-        python - <<'PYEOF'
-        import os, json, base64
+        python3 << 'PYEOF'
+        import os, json, base64, sys
+
+        creds_raw = os.environ.get('GDRIVE_CREDENTIALS', '')
+        folder_id = os.environ.get('GDRIVE_FOLDER_ID', '')
+        file_path = os.environ.get('FILE_PATH', '')
+        file_name = os.environ.get('FILE_NAME', '')
+
+        print(f"Credentials length: {len(creds_raw)}")
+        print(f"Folder ID: {folder_id}")
+        print(f"File path: {file_path}")
+        print(f"File name: {file_name}")
+
+        if not creds_raw:
+            print("ERROR: GDRIVE_CREDENTIALS is empty!")
+            sys.exit(1)
+
+        # Try base64 decode first
+        creds_json = None
+        try:
+            decoded = base64.b64decode(creds_raw).decode('utf-8')
+            creds_json = json.loads(decoded)
+            print("Credentials: base64 decoded successfully")
+        except Exception as e1:
+            print(f"Base64 decode failed: {e1}")
+            try:
+                creds_json = json.loads(creds_raw)
+                print("Credentials: raw JSON parsed successfully")
+            except Exception as e2:
+                print(f"Raw JSON parse failed: {e2}")
+                print(f"First 50 chars: {creds_raw[:50]}...")
+                sys.exit(1)
+
         from googleapiclient.discovery import build
         from googleapiclient.http import MediaFileUpload
         from google.oauth2 import service_account
 
-        # Try to decode base64, otherwise use as-is
-        creds_raw = os.environ['GDRIVE_CREDENTIALS']
-        try:
-            creds_json = json.loads(base64.b64decode(creds_raw).decode('utf-8'))
-            print("Credentials: base64 decoded")
-        except:
-            creds_json = json.loads(creds_raw)
-            print("Credentials: raw JSON")
-
         creds = service_account.Credentials.from_service_account_info(creds_json)
         drive = build('drive', 'v3', credentials=creds)
-
-        folder_id = os.environ['GDRIVE_FOLDER_ID']
-        file_path = os.environ['FILE_PATH']
-        file_name = os.environ['FILE_NAME']
 
         query = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
         results = drive.files().list(q=query, fields="files(id)").execute()
